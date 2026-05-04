@@ -5,6 +5,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { INITIAL_ACTIVE_LINE, INITIAL_SCREEN_LINES } from './content/screenTemplate'
+import { KEYBOARD_GRID, KEY_LABELS, NAV_ROWS, NUMPAD_ROWS, PRIMARY_ROWS, type KeyTone } from './keyboard/layout'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <canvas id="scene" aria-label="Interactive retro computer scene"></canvas>
@@ -390,75 +392,6 @@ const keyMap = new Map<string, THREE.Mesh[]>()
 const allKeys: THREE.Mesh[] = []
 const legendMaterialCache = new Map<string, THREE.MeshStandardMaterial>()
 
-type KeyTone = 'normal' | 'warm' | 'cool'
-type KeyLayout = { code: string; width?: number; tone?: KeyTone }
-
-const KEY_LABELS: Record<string, string> = {
-  Escape: 'ESC',
-  Backquote: '` ~',
-  Minus: '- _',
-  Equal: '= +',
-  Backspace: 'BACKSPACE',
-  Tab: 'TAB',
-  BracketLeft: '[ {',
-  BracketRight: '] }',
-  Backslash: '\\ |',
-  CapsLock: 'CAPS',
-  Semicolon: '; :',
-  Quote: "' \"",
-  Enter: 'ENTER',
-  ShiftLeft: 'SHIFT',
-  ShiftRight: 'SHIFT',
-  Comma: ', <',
-  Period: '. >',
-  Slash: '/ ?',
-  ControlLeft: 'CTRL',
-  ControlRight: 'CTRL',
-  MetaLeft: 'WIN',
-  MetaRight: 'WIN',
-  AltLeft: 'ALT',
-  AltRight: 'ALT',
-  Space: 'SPACE',
-  ContextMenu: 'MENU',
-  Insert: 'INS',
-  Delete: 'DEL',
-  Home: 'HOME',
-  End: 'END',
-  PageUp: 'PGUP',
-  PageDown: 'PGDN',
-  ArrowUp: 'UP',
-  ArrowLeft: 'LEFT',
-  ArrowDown: 'DOWN',
-  ArrowRight: 'RIGHT',
-  NumLock: 'NUM',
-  NumpadDivide: '/',
-  NumpadMultiply: '*',
-  NumpadSubtract: '-',
-  NumpadAdd: '+',
-  NumpadDecimal: '.',
-  NumpadEnter: 'ENTER',
-}
-
-for (let i = 1; i <= 12; i += 1) {
-  KEY_LABELS[`F${i}`] = `F${i}`
-}
-
-for (let i = 0; i <= 9; i += 1) {
-  const key = i === 0 ? 'Digit0' : `Digit${i}`
-  const shifted = [')', '!', '@', '#', '$', '%', '^', '&', '*', '('][i]
-  KEY_LABELS[key] = `${i} ${shifted}`
-}
-
-for (let i = 0; i <= 9; i += 1) {
-  const key = `Numpad${i}`
-  KEY_LABELS[key] = `${i}`
-}
-
-for (let code = 65; code <= 90; code += 1) {
-  const letter = String.fromCharCode(code)
-  KEY_LABELS[`Key${letter}`] = letter
-}
-
 function sideMaterialForTone(tone: KeyTone): THREE.MeshStandardMaterial {
   if (tone === 'warm') return accentKeyMaterial
   if (tone === 'cool') return coolKeyMaterial
@@ -550,184 +483,36 @@ function createKey(
   keyboard.add(mesh)
 }
 
-const primaryRows: KeyLayout[][] = [
-  [
-    { code: 'Escape', tone: 'warm' },
-    { code: 'F1' },
-    { code: 'F2' },
-    { code: 'F3' },
-    { code: 'F4' },
-    { code: 'F5' },
-    { code: 'F6' },
-    { code: 'F7' },
-    { code: 'F8' },
-    { code: 'F9' },
-    { code: 'F10' },
-    { code: 'F11' },
-    { code: 'F12' },
-  ],
-  [
-    { code: 'Backquote' },
-    { code: 'Digit1' },
-    { code: 'Digit2' },
-    { code: 'Digit3' },
-    { code: 'Digit4' },
-    { code: 'Digit5' },
-    { code: 'Digit6' },
-    { code: 'Digit7' },
-    { code: 'Digit8' },
-    { code: 'Digit9' },
-    { code: 'Digit0' },
-    { code: 'Minus' },
-    { code: 'Equal' },
-    { code: 'Backspace', width: 1.9 },
-  ],
-  [
-    { code: 'Tab', width: 1.45 },
-    { code: 'KeyQ' },
-    { code: 'KeyW' },
-    { code: 'KeyE' },
-    { code: 'KeyR' },
-    { code: 'KeyT' },
-    { code: 'KeyY' },
-    { code: 'KeyU' },
-    { code: 'KeyI' },
-    { code: 'KeyO' },
-    { code: 'KeyP' },
-    { code: 'BracketLeft' },
-    { code: 'BracketRight' },
-    { code: 'Backslash', width: 1.45 },
-  ],
-  [
-    { code: 'CapsLock', width: 1.85 },
-    { code: 'KeyA' },
-    { code: 'KeyS' },
-    { code: 'KeyD' },
-    { code: 'KeyF' },
-    { code: 'KeyG' },
-    { code: 'KeyH' },
-    { code: 'KeyJ' },
-    { code: 'KeyK' },
-    { code: 'KeyL' },
-    { code: 'Semicolon' },
-    { code: 'Quote' },
-    { code: 'Enter', width: 2.25, tone: 'cool' },
-  ],
-  [
-    { code: 'ShiftLeft', width: 2.25 },
-    { code: 'KeyZ' },
-    { code: 'KeyX' },
-    { code: 'KeyC' },
-    { code: 'KeyV' },
-    { code: 'KeyB' },
-    { code: 'KeyN' },
-    { code: 'KeyM' },
-    { code: 'Comma' },
-    { code: 'Period' },
-    { code: 'Slash' },
-    { code: 'ShiftRight', width: 2.6 },
-  ],
-  [
-    { code: 'ControlLeft', width: 1.35 },
-    { code: 'MetaLeft', width: 1.35 },
-    { code: 'AltLeft', width: 1.35 },
-    { code: 'Space', width: 5, tone: 'cool' },
-    { code: 'AltRight', width: 1.35 },
-    { code: 'MetaRight', width: 1.35 },
-    { code: 'ContextMenu', width: 1.35 },
-    { code: 'ControlRight', width: 1.35 },
-  ],
-]
-
-const unit = 0.45
-const gap = 0.08
-const rowDepth = 0.64
-const rowStart = -1.86
-const primaryStartX = -5.66
-
-primaryRows.forEach((row, rowIndex) => {
-  let cursor = primaryStartX
-  const rowZ = rowStart + rowIndex * rowDepth
+PRIMARY_ROWS.forEach((row, rowIndex) => {
+  let cursor = KEYBOARD_GRID.primaryStartX
+  const rowZ = KEYBOARD_GRID.rowStart + rowIndex * KEYBOARD_GRID.rowDepth
 
   row.forEach((keyInfo) => {
     createKey(keyInfo.code, cursor, rowZ, keyInfo.width ?? 1, keyInfo.tone ?? 'normal')
-    cursor += (keyInfo.width ?? 1) * unit + gap
+    cursor += (keyInfo.width ?? 1) * KEYBOARD_GRID.unit + KEYBOARD_GRID.gap
   })
 })
 
-const navKeys: KeyLayout[][] = [
-  [
-    { code: 'Insert' },
-    { code: 'Home' },
-    { code: 'PageUp' },
-  ],
-  [
-    { code: 'Delete' },
-    { code: 'End' },
-    { code: 'PageDown' },
-  ],
-  [
-    { code: 'ArrowUp' },
-  ],
-  [
-    { code: 'ArrowLeft' },
-    { code: 'ArrowDown' },
-    { code: 'ArrowRight' },
-  ],
-]
-
-navKeys.forEach((row, rowIndex) => {
-  const total = row.reduce((sum, key) => sum + (key.width ?? 1) * unit + gap, -gap)
-  let cursor = 3.05 - total / 2
-  const rowZ = rowStart + rowIndex * rowDepth
+NAV_ROWS.forEach((row, rowIndex) => {
+  const total = row.reduce((sum, key) => sum + (key.width ?? 1) * KEYBOARD_GRID.unit + KEYBOARD_GRID.gap, -KEYBOARD_GRID.gap)
+  let cursor = KEYBOARD_GRID.navCenterX - total / 2
+  const rowZ = KEYBOARD_GRID.rowStart + rowIndex * KEYBOARD_GRID.rowDepth
 
   row.forEach((keyInfo) => {
     createKey(keyInfo.code, cursor, rowZ, keyInfo.width ?? 1, keyInfo.tone ?? 'normal')
-    cursor += (keyInfo.width ?? 1) * unit + gap
+    cursor += (keyInfo.width ?? 1) * KEYBOARD_GRID.unit + KEYBOARD_GRID.gap
   })
 })
 
-const numpadRows: KeyLayout[][] = [
-  [
-    { code: 'NumLock' },
-    { code: 'NumpadDivide' },
-    { code: 'NumpadMultiply' },
-    { code: 'NumpadSubtract' },
-  ],
-  [
-    { code: 'Numpad7' },
-    { code: 'Numpad8' },
-    { code: 'Numpad9' },
-    { code: 'NumpadAdd', width: 1.1, tone: 'cool' },
-  ],
-  [
-    { code: 'Numpad4' },
-    { code: 'Numpad5' },
-    { code: 'Numpad6' },
-    { code: 'NumpadAddGhost', width: 1.1, tone: 'cool' },
-  ],
-  [
-    { code: 'Numpad1' },
-    { code: 'Numpad2' },
-    { code: 'Numpad3' },
-    { code: 'NumpadEnter', width: 1.1, tone: 'cool' },
-  ],
-  [
-    { code: 'Numpad0', width: 2.1 },
-    { code: 'NumpadDecimal' },
-    { code: 'NumpadEnterGhost', width: 1.1, tone: 'cool' },
-  ],
-]
-
-numpadRows.forEach((row, rowIndex) => {
-  const total = row.reduce((sum, key) => sum + (key.width ?? 1) * unit + gap, -gap)
-  let cursor = 4.92 - total / 2
-  const rowZ = rowStart + rowIndex * rowDepth
+NUMPAD_ROWS.forEach((row, rowIndex) => {
+  const total = row.reduce((sum, key) => sum + (key.width ?? 1) * KEYBOARD_GRID.unit + KEYBOARD_GRID.gap, -KEYBOARD_GRID.gap)
+  let cursor = KEYBOARD_GRID.numpadCenterX - total / 2
+  const rowZ = KEYBOARD_GRID.rowStart + rowIndex * KEYBOARD_GRID.rowDepth
 
   row.forEach((keyInfo) => {
     const visualCode = keyInfo.code === 'NumpadAddGhost' ? 'NumpadAdd' : keyInfo.code === 'NumpadEnterGhost' ? 'NumpadEnter' : keyInfo.code
     createKey(visualCode, cursor, rowZ, keyInfo.width ?? 1, keyInfo.tone ?? 'normal')
-    cursor += (keyInfo.width ?? 1) * unit + gap
+    cursor += (keyInfo.width ?? 1) * KEYBOARD_GRID.unit + KEYBOARD_GRID.gap
   })
 })
 
@@ -813,19 +598,9 @@ const mouseCable = new THREE.Mesh(new THREE.TubeGeometry(mouseCableCurve, 48, 0.
 mouseCable.castShadow = true
 rig.add(mouseCable)
 
-const lines = [
-  '<!doctype html>',
-  '<html lang="en">',
-  '  <head>',
-  '    <title>HTML // Hope This Moons Later</title>',
-  '  </head>',
-  '  <body>',
-  '    <!-- type to mutate this memory -->',
-  '  </body>',
-  '</html>',
-]
+const lines = [...INITIAL_SCREEN_LINES]
 
-let activeLine = '  <p class="signal">dial-up is alive</p>'
+let activeLine = INITIAL_ACTIVE_LINE
 let cursorOn = true
 let mouseDown = false
 let wheelTarget = 0
