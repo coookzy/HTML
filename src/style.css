@@ -80,6 +80,7 @@ body {
   width: fit-content;
   border-radius: 0.1rem;
   animation: rise 0.8s ease-out;
+  text-align: center;
 }
 
 .brand .logo {
@@ -87,16 +88,18 @@ body {
   max-width: 200px;
   width: 100%;
   height: auto;
-  margin-bottom: 0.5rem;
+  margin: 0 auto 0.5rem auto;
 }
 
 .tagline {
   margin: 0.5rem 0 0 0;
+  font-family: Helvetica, Arial, sans-serif;
   font-size: 0.75rem;
   line-height: 1.5;
   color: var(--muted);
   max-width: 280px;
   letter-spacing: 0.02em;
+  text-align: left;
 }
 
 .tagline .cmd {
