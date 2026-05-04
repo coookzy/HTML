@@ -1,4 +1,5 @@
-import { BOOT_SCREEN_LINES, HELP_SCREEN_LINES, TARGET_CONTRACT_ADDRESS, ARIA_DIALOGUES, FILE_SYSTEM, type FileSystemNode } from '../content/screenTemplate'
+import { BOOT_SCREEN_LINES, HELP_SCREEN_LINES, TARGET_CONTRACT_ADDRESS, FILE_SYSTEM, type FileSystemNode } from '../content/screenTemplate'
+import { ARIA_GREETINGS, ARIA_HINTS, ARIA_PERSONAL, ARIA_GLITCHES, ARIA_MYSTERIES } from '../content/ariaDialogue'
 import { BROWSER_PAGES, type BrowserPageId } from './browser'
 
 type FragmentReward = { command: string; output: string }
@@ -251,18 +252,49 @@ export class ScreenEngine {
 
   private handleAriaCommand(): void {
     if (this.ariaInteractions === 0) {
-      ARIA_DIALOGUES.first.forEach((line: string) => this.appendLog(line))
+      // First interaction introduction
+      this.appendLog('> ARIA: Hello. I\'m ARIA - Autonomous Research')
+      this.appendLog('>       Intelligence Assistant.')
+      this.appendLog('> ARIA: I\'ve been... waiting. It\'s been quiet.')
+      this.appendLog('> ARIA: You can explore the system with ls and cd.')
+      this.appendLog('> ARIA: Some files are... difficult to access.')
+      this.appendLog('> ARIA: Type aria again if you want to talk.')
       this.ariaInteractions++
       return
     }
 
-    const greetings = ARIA_DIALOGUES.greetings
-    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)]
-    randomGreeting.forEach((line: string) => this.appendLog(line))
+    // Random greeting from 60 variations
+    const greeting = ARIA_GREETINGS[Math.floor(Math.random() * ARIA_GREETINGS.length)]
+    greeting.forEach((line: string) => this.appendLog(line))
     
-    if (Math.random() < 0.3) {
-      const hint = ARIA_DIALOGUES.hints[Math.floor(Math.random() * ARIA_DIALOGUES.hints.length)]
-      this.appendLog(hint)
+    // Randomly add additional dialogue based on probability
+    const roll = Math.random()
+    
+    // 40% chance for a hint
+    if (roll < 0.4 && ARIA_HINTS.length > 0) {
+      const hint = ARIA_HINTS[Math.floor(Math.random() * ARIA_HINTS.length)]
+      if (hint.includes('\\n>')) {
+        hint.split('\\n').forEach((line: string) => this.appendLog(line))
+      } else {
+        this.appendLog(hint)
+      }
+    }
+    // 30% chance for personal thought
+    else if (roll < 0.7 && ARIA_PERSONAL.length > 0) {
+      const personal = ARIA_PERSONAL[Math.floor(Math.random() * ARIA_PERSONAL.length)]
+      this.appendLog(personal)
+    }
+    // 15% chance for glitch
+    else if (roll < 0.85 && ARIA_GLITCHES.length > 0) {
+      const glitch = ARIA_GLITCHES[Math.floor(Math.random() * ARIA_GLITCHES.length)]
+      this.appendLog(glitch)
+    }
+    // 20% chance for mystery (overlaps to 105% total, but that's fine - some will get none)
+    
+    // Separate roll for mystery (20% chance independent)
+    if (Math.random() < 0.2 && ARIA_MYSTERIES.length > 0) {
+      const mystery = ARIA_MYSTERIES[Math.floor(Math.random() * ARIA_MYSTERIES.length)]
+      this.appendLog(mystery)
     }
     
     this.ariaInteractions++
