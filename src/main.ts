@@ -31,6 +31,7 @@ if (!canvas || !typedValue) {
 }
 
 const typedValueEl: HTMLSpanElement = typedValue
+const modelAssetUrl = (fileName: string): string => `${import.meta.env.BASE_URL}models/${fileName}`
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -147,7 +148,7 @@ moonAnchor.add(moonLight)
 
 const moonLoader = new GLTFLoader()
 moonLoader.load(
-  '/models/luna_earths_companion.glb',
+  modelAssetUrl('luna_earths_companion.glb'),
   (gltf) => {
     const loadedMoon = gltf.scene
 
@@ -294,7 +295,7 @@ pcTower.add(pcBaseShadow)
 const gltfLoader = new GLTFLoader()
 
 gltfLoader.load(
-  '/models/pc_model.glb',
+  modelAssetUrl('pc_model.glb'),
   (gltf) => {
     const loadedPc = gltf.scene
     const PC_MODEL_YAW = Math.PI * 0.86
@@ -742,7 +743,7 @@ const mouseButtonParts: THREE.Object3D[] = []
 const mouseButtonBaseY = new WeakMap<THREE.Object3D, number>()
 
 gltfLoader.load(
-  '/models/pc_mouse_type-r.glb',
+  modelAssetUrl('pc_mouse_type-r.glb'),
   (gltf) => {
     const loadedMouse = gltf.scene
 
