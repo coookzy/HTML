@@ -87,6 +87,23 @@ body {
   max-width: 200px;
   width: 100%;
   height: auto;
+  margin-bottom: 0.5rem;
+}
+
+.tagline {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 280px;
+  letter-spacing: 0.02em;
+}
+
+.tagline .cmd {
+  color: var(--accent-warm);
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .eyebrow {
@@ -121,25 +138,6 @@ body {
   letter-spacing: 0.12em;
   color: var(--accent);
   animation: rise 0.9s ease-out;
-}
-
-.footer-left,
-.footer-right {
-  grid-row: 3;
-  font-size: 0.68rem;
-  color: rgba(220, 230, 245, 0.86);
-  letter-spacing: 0.18em;
-  align-self: end;
-  animation: rise 1.2s ease-out;
-}
-
-.footer-left {
-  grid-column: 1;
-}
-
-.footer-right {
-  grid-column: 2;
-  justify-self: end;
 }
 
 @keyframes rise {
@@ -190,17 +188,6 @@ body {
   .controls {
     grid-column: 1;
     grid-row: 2;
-    justify-self: start;
-  }
-
-  .footer-left {
-    grid-column: 1;
-    grid-row: 3;
-  }
-
-  .footer-right {
-    grid-column: 1;
-    grid-row: 4;
     justify-self: start;
   }
 }

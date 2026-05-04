@@ -26,10 +26,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <div class="hud">
   <div class="brand">
     <img src="${moonsysLogo}" alt="MoonSys Logo" class="logo" />
+    <p class="tagline">An abandoned lunar research station terminal. Type <span class="cmd">help</span> for commands or <span class="cmd">aria</span> to talk to the AI. Explore the file system to uncover what happened 847 days ago.</p>
   </div>
   <div class="controls">TYPE COMMANDS ON CRT | MOVE + CLICK TO DRIVE MOUSE</div>
-  <div class="footer-left">DIAL-UP SIM</div>
-  <div class="footer-right">YEAR 1995</div>
 </div>
 `
 
