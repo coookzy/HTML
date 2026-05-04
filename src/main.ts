@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { KEYBOARD_GRID, KEY_LABELS, NAV_ROWS, NUMPAD_ROWS, PRIMARY_ROWS, type KeyTone } from './keyboard/layout'
 import { ScreenEngine } from './terminal/engine'
 import keyboardSoundUrl from './assets/ncprime-keyboard-typing-one-short-1-292590.mp3'
+import musicUrl from './assets/music.mp3'
 import moonsysLogo from './assets/moonsyslogo.png'
 
 const keyboardAudio = new Audio(keyboardSoundUrl)
@@ -19,7 +20,44 @@ function playKeySound() {
   sound.play().catch(() => {})
 }
 
+// Background music setup
+const backgroundMusic = new Audio(musicUrl)
+backgroundMusic.loop = true
+let savedVolume: string | null = null
+try {
+  savedVolume = localStorage.getItem('musicVolume')
+} catch (e) {
+  console.warn('localStorage access failed:', e)
+}
+backgroundMusic.volume = savedVolume ? parseFloat(savedVolume) : 0.3
+
+function setMusicVolume(volume: number) {
+  // Clamp volume between 0 and 1
+  volume = Math.max(0, Math.min(1, volume))
+  backgroundMusic.volume = volume
+  try {
+    localStorage.setItem('musicVolume', String(volume))
+  } catch (e) {
+    console.warn('localStorage access failed:', e)
+  }
+  
+  if (volume > 0 && backgroundMusic.paused) {
+    backgroundMusic.play().catch(() => {})
+  } else if (volume === 0 && !backgroundMusic.paused) {
+    backgroundMusic.pause()
+  }
+}
+
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+<div id="loading-screen">
+  <div class="loading-content">
+    <img src="${moonsysLogo}" alt="MoonSys Logo" class="loading-logo" />
+    <div class="loading-bar">
+      <div class="loading-progress" id="loading-progress"></div>
+    </div>
+    <p class="loading-text">INITIALIZING SYSTEMS...</p>
+  </div>
+</div>
 <canvas id="scene" aria-label="Interactive retro computer scene"></canvas>
 <div class="vignette"></div>
 <div class="grain"></div>
@@ -27,10 +65,43 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div class="brand">
     <img src="${moonsysLogo}" alt="MoonSys Logo" class="logo" />
     <p class="tagline">An abandoned lunar research station terminal. Type <span class="cmd">help</span> for commands or <span class="cmd">aria</span> to talk to the AI. Explore the file system to uncover what happened 847 days ago.</p>
+    <div class="music-control">
+      <label for="music-volume" class="music-label">🔊 VOLUME</label>
+      <input type="range" id="music-volume" class="music-slider" min="0" max="100" value="30" />
+    </div>
   </div>
   <div class="controls">TYPE COMMANDS ON CRT | MOVE + CLICK TO DRIVE MOUSE</div>
 </div>
 `
+
+// Loading tracking
+let loadedModels = 0
+const totalModels = 3
+const loadingProgress = document.getElementById('loading-progress') as HTMLDivElement
+const loadingScreen = document.getElementById('loading-screen') as HTMLDivElement
+
+function updateLoadingProgress() {
+  loadedModels++
+  const progress = (loadedModels / totalModels) * 100
+  if (loadingProgress) {
+    loadingProgress.style.width = `${progress}%`
+  }
+  
+  if (loadedModels === totalModels) {
+    setTimeout(() => {
+      if (loadingScreen) {
+        loadingScreen.style.opacity = '0'
+        setTimeout(() => {
+          loadingScreen.style.display = 'none'
+          // Start music after loading screen fades
+          if (backgroundMusic.volume > 0) {
+            backgroundMusic.play().catch(() => {})
+          }
+        }, 500)
+      }
+    }, 3500) // 3.5 second minimum delay
+  }
+}
 
 const canvas = document.querySelector<HTMLCanvasElement>('#scene')
 
@@ -61,6 +132,14 @@ const CAMERA_POS = new THREE.Vector3(0, 2.15, 17.7)
 const CAMERA_TARGET = new THREE.Vector3(0, -1.1, 0)
 camera.position.copy(CAMERA_POS)
 camera.lookAt(CAMERA_TARGET)
+
+// Initialize post-processing early so it's available for resize listener
+const clock = new THREE.Clock()
+const renderPass = new RenderPass(scene, camera)
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.0, 0.2, 1.02)
+const composer = new EffectComposer(renderer)
+composer.addPass(renderPass)
+composer.addPass(bloomPass)
 
 const ambient = new THREE.AmbientLight(0xa0b8ff, 0.42)
 scene.add(ambient)
@@ -190,6 +269,7 @@ moonLoader.load(
     loadedMoon.rotation.y = Math.PI * 0.2
 
     moonAnchor.add(loadedMoon)
+    updateLoadingProgress()
   },
   undefined,
   () => {
@@ -343,6 +423,7 @@ gltfLoader.load(
     loadedPc.rotation.y = PC_MODEL_YAW
 
     pcModelWrap.add(loadedPc)
+    updateLoadingProgress()
   },
   undefined,
   (error) => {
@@ -581,6 +662,7 @@ gltfLoader.load(
     loadedMouse.rotation.x = -0.02
 
     mouseModelWrap.add(loadedMouse)
+    updateLoadingProgress()
   },
   undefined,
   () => {
@@ -707,6 +789,38 @@ function drawScreen(): void {
   ctx.fill()
 
   screenTexture.needsUpdate = true
+}
+
+// Music volume slider
+const musicSlider = document.getElementById('music-volume') as HTMLInputElement
+if (musicSlider) {
+  let savedVolume: string | null = null
+  try {
+    savedVolume = localStorage.getItem('musicVolume')
+  } catch (e) {
+    console.warn('localStorage access failed:', e)
+  }
+  const volumeValue = savedVolume ? parseFloat(savedVolume) : 0.3
+  // Ensure volume is in 0-1 range, handle legacy values
+  const normalizedVolume = volumeValue > 1 ? volumeValue / 100 : volumeValue
+  musicSlider.value = String(Math.round(normalizedVolume * 100))
+  backgroundMusic.volume = normalizedVolume
+  
+  // Update slider visual background
+  function updateSliderBackground() {
+    const value = parseFloat(musicSlider.value)
+    const percentage = value
+    musicSlider.style.background = `linear-gradient(to right, var(--accent) 0%, var(--accent) ${percentage}%, rgba(143, 151, 166, 0.3) ${percentage}%, rgba(143, 151, 166, 0.3) 100%)`
+  }
+  
+  // Set initial background
+  updateSliderBackground()
+  
+  musicSlider.addEventListener('input', (e) => {
+    const volume = parseFloat((e.target as HTMLInputElement).value) / 100
+    setMusicVolume(volume)
+    updateSliderBackground()
+  })
 }
 
 window.addEventListener('keydown', (event) => {
@@ -839,10 +953,24 @@ window.addEventListener('pointerdown', (event) => {
           screenEngine.submit()
         } else if (code === 'Backspace') {
           screenEngine.backspace()
+        } else if (code === 'Delete') {
+          screenEngine.delete()
         } else if (code === 'Space') {
           screenEngine.insertCharacter(' ')
         } else if (code === 'Tab') {
           screenEngine.insertCharacter('  ')
+        } else if (code === 'ArrowUp') {
+          screenEngine.historyPrev()
+        } else if (code === 'ArrowDown') {
+          screenEngine.historyNext()
+        } else if (code === 'ArrowLeft') {
+          screenEngine.moveCursorLeft()
+        } else if (code === 'ArrowRight') {
+          screenEngine.moveCursorRight()
+        } else if (code === 'Home') {
+          screenEngine.moveCursorHome()
+        } else if (code === 'End') {
+          screenEngine.moveCursorEnd()
         } else if (keyLabel.length === 1) {
           char = keyLabel
           screenEngine.insertCharacter(char)
@@ -902,14 +1030,6 @@ setInterval(() => {
 }, 460)
 
 drawScreen()
-
-const clock = new THREE.Clock()
-
-const renderPass = new RenderPass(scene, camera)
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.0, 0.2, 1.02)
-const composer = new EffectComposer(renderer)
-composer.addPass(renderPass)
-composer.addPass(bloomPass)
 
 function tick(): void {
   const elapsed = clock.getElapsedTime()
