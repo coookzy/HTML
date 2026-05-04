@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { KEYBOARD_GRID, KEY_LABELS, NAV_ROWS, NUMPAD_ROWS, PRIMARY_ROWS, type KeyTone } from './keyboard/layout'
 import { ScreenEngine } from './terminal/engine'
 import keyboardSoundUrl from './assets/ncprime-keyboard-typing-one-short-1-292590.mp3'
+import moonsysLogo from './assets/moonsyslogo.png'
 
 const keyboardAudio = new Audio(keyboardSoundUrl)
 keyboardAudio.volume = 0.3
@@ -24,9 +25,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <div class="grain"></div>
 <div class="hud">
   <div class="brand">
-    <p class="eyebrow">PROJECT</p>
-    <h1>MoonSys</h1>
-    <p class="subtitle">MoonSys Terminal Simulation</p>
+    <img src="${moonsysLogo}" alt="MoonSys Logo" class="logo" />
   </div>
   <div class="controls">TYPE COMMANDS ON CRT | MOVE + CLICK TO DRIVE MOUSE</div>
   <div class="footer-left">DIAL-UP SIM</div>
