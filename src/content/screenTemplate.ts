@@ -1,20 +1,23 @@
-export const INITIAL_SCREEN_LINES: string[] = [
-  '<!doctype html>',
-  '<html lang="en">',
-  '  <head>',
-  '    <title>HTML // Hope This Moons Later</title>',
-  '  </head>',
-  '  <body>',
-  '    <pre class="ascii-html">',
-  '    __  __ _______ __  ___   __      ',
-  '   / / / //_  __//  |/  /  / /      ',
-  '  / /_/ /  / /  / /|_/ /  / /       ',
-  ' / __  /  / /  / /  / /  / /___     ',
-  '/_/ /_/  /_/  /_/  /_/  /_____/    ',
-  '    </pre>',
-  '    <!-- type to mutate this memory -->',
-  '  </body>',
-  '</html>',
+﻿export const TARGET_CONTRACT_ADDRESS = 'testUYjKkvy2hyqC7444mU6eXFD3ETZW4tLd6Dapump'
+
+export const BOOT_SCREEN_LINES: string[] = [
+  'MOONSYS TERMINAL :: BOOT OK',
+  '',
+  '    __  ___ ____   ____   _   __ ',
+  '   /  |/  // __ \\ / __ \\ / | / / ',
+  '  / /|_/ // / / // / / //  |/ /  ',
+  ' / /  / // /_/ // /_/ // /|  /   ',
+  '/_/  /_/ \\____/ \\____//_/ |_/    ',
+  '',
+  'System ready. Type help for commands.',
+  '',
 ]
 
-export const INITIAL_ACTIVE_LINE = '  <p class="signal">dial-up is alive</p>'
+export const HELP_SCREEN_LINES: string[] = [
+  '> Available:',
+  '> help, status, run browser, run hunt',
+  '> inventory, assemble',
+  '> scan, probe moon, trace, decrypt, override',
+  '> submit <contract-address>',
+  '> clear',
+]

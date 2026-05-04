@@ -5,8 +5,18 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { INITIAL_ACTIVE_LINE, INITIAL_SCREEN_LINES } from './content/screenTemplate'
 import { KEYBOARD_GRID, KEY_LABELS, NAV_ROWS, NUMPAD_ROWS, PRIMARY_ROWS, type KeyTone } from './keyboard/layout'
+import { ScreenEngine } from './terminal/engine'
+import keyboardSoundUrl from './assets/ncprime-keyboard-typing-one-short-1-292590.mp3'
+
+const keyboardAudio = new Audio(keyboardSoundUrl)
+keyboardAudio.volume = 0.3
+
+function playKeySound() {
+  const sound = keyboardAudio.cloneNode() as HTMLAudioElement
+  sound.volume = 0.3
+  sound.play().catch(() => {})
+}
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <canvas id="scene" aria-label="Interactive retro computer scene"></canvas>
@@ -15,24 +25,20 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <div class="hud">
   <div class="brand">
     <p class="eyebrow">PROJECT</p>
-    <h1>HTML</h1>
-    <p class="subtitle">Hope This Moons Later</p>
+    <h1>MoonSys</h1>
+    <p class="subtitle">MoonSys Terminal Simulation</p>
   </div>
-  <div class="controls">TYPE TO EDIT CRT | MOVE + CLICK TO DRIVE MOUSE</div>
+  <div class="controls">TYPE COMMANDS ON CRT | MOVE + CLICK TO DRIVE MOUSE</div>
   <div class="footer-left">DIAL-UP SIM</div>
   <div class="footer-right">YEAR 1995</div>
-  <div class="status">ACTIVE INPUT: <span id="typed-value">none</span></div>
 </div>
 `
 
 const canvas = document.querySelector<HTMLCanvasElement>('#scene')
-const typedValue = document.querySelector<HTMLSpanElement>('#typed-value')
 
-if (!canvas || !typedValue) {
+if (!canvas) {
   throw new Error('Missing required DOM elements')
 }
-
-const typedValueEl: HTMLSpanElement = typedValue
 const modelAssetUrl = (fileName: string): string => `${import.meta.env.BASE_URL}models/${fileName}`
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
@@ -390,6 +396,8 @@ const accentKeyMaterial = new THREE.MeshStandardMaterial({ color: 0xc2915b, roug
 const coolKeyMaterial = new THREE.MeshStandardMaterial({ color: 0x2b5c99, roughness: 0.54, metalness: 0.08 })
 const keyMap = new Map<string, THREE.Mesh[]>()
 const allKeys: THREE.Mesh[] = []
+const raycaster = new THREE.Raycaster()
+const pointer2D = new THREE.Vector2()
 const legendMaterialCache = new Map<string, THREE.MeshStandardMaterial>()
 
 function sideMaterialForTone(tone: KeyTone): THREE.MeshStandardMaterial {
@@ -598,17 +606,14 @@ const mouseCable = new THREE.Mesh(new THREE.TubeGeometry(mouseCableCurve, 48, 0.
 mouseCable.castShadow = true
 rig.add(mouseCable)
 
-const lines = [...INITIAL_SCREEN_LINES]
+const screenEngine = new ScreenEngine()
 
-let activeLine = INITIAL_ACTIVE_LINE
 let cursorOn = true
 let mouseDown = false
 let wheelTarget = 0
 let wheelValue = 0
 let pointerX = 0
 let pointerY = 0
-
-const typedHistory: string[] = []
 
 function drawScreen(): void {
   const ctx = crtContext
@@ -633,23 +638,69 @@ function drawScreen(): void {
   ctx.fillStyle = 'rgba(9, 23, 35, 0.8)'
   ctx.fillRect(safeX, safeY, safeW, safeH)
 
+  const view = screenEngine.getViewModel()
+
   ctx.font = '26px "Courier New", monospace'
   ctx.fillStyle = '#9ce8ff'
-  ctx.fillText('C:/HTML/LOOP/index.html', safeX + 24, safeY + 38)
+  ctx.fillText(view.title, safeX + 24, safeY + 38)
 
-  ctx.font = '23px "Courier New", monospace'
-  ctx.fillStyle = '#d7f9ff'
+  ctx.font = '19px "Courier New", monospace'
+  ctx.fillStyle = '#7fd3ff'
+  ctx.fillText(view.statusLabel, safeX + safeW - 238, safeY + 38)
 
-  const visible = [...lines.slice(-9), activeLine]
-  const textStartY = safeY + 84
-  const lineHeight = 42
-  visible.forEach((line, i) => {
-    ctx.fillText(line, safeX + 24, textStartY + i * lineHeight)
-  })
+  if (view.mode === 'browser') {
+    const browserX = safeX + 20
+    const browserY = safeY + 66
+    const browserW = safeW - 40
+    const browserH = safeH - 130
 
-  if (cursorOn) {
-    const metrics = ctx.measureText(activeLine)
-    ctx.fillRect(safeX + 31 + metrics.width, textStartY - 26 + visible.length * lineHeight, 14, 22)
+    ctx.fillStyle = 'rgba(8, 16, 26, 0.92)'
+    ctx.fillRect(browserX, browserY, browserW, browserH)
+
+    ctx.fillStyle = 'rgba(110, 170, 214, 0.3)'
+    ctx.fillRect(browserX, browserY, browserW, 36)
+
+    ctx.strokeStyle = 'rgba(150, 220, 255, 0.32)'
+    ctx.strokeRect(browserX, browserY, browserW, browserH)
+
+    ctx.fillStyle = '#cfeeff'
+    ctx.font = '18px "Courier New", monospace'
+    ctx.fillText(view.windowTitle, browserX + 14, browserY + 24)
+
+    ctx.fillStyle = '#91d9ff'
+    ctx.font = '16px "Courier New", monospace'
+    ctx.fillText(view.windowPath, browserX + 14, browserY + 56)
+
+    ctx.fillStyle = '#d7f9ff'
+    ctx.font = '18px "Courier New", monospace'
+    const browserTextStart = browserY + 86
+    view.windowLines.forEach((line, i) => {
+      ctx.fillText(line, browserX + 14, browserTextStart + i * 28)
+    })
+
+    ctx.fillStyle = '#ffd394'
+    ctx.fillText(view.prompt, browserX + 14, browserY + browserH - 16)
+
+    if (cursorOn) {
+      const beforeCursor = `> ${view.prompt.slice(2, 2 + view.cursorIndex)}`
+      const metrics = ctx.measureText(beforeCursor)
+      ctx.fillRect(browserX + 16 + metrics.width, browserY + browserH - 31, 10, 16)
+    }
+  } else {
+    const visible = [...view.lines, view.prompt]
+    const textStartY = safeY + 76
+    const lineHeight = 26
+    ctx.font = '17px "Consolas", "Cascadia Code", "Courier New", monospace'
+    ctx.fillStyle = '#d7f9ff'
+    visible.forEach((line, i) => {
+      ctx.fillText(line, safeX + 24, textStartY + i * lineHeight)
+    })
+
+    if (cursorOn) {
+      const beforeCursor = `> ${view.prompt.slice(2, 2 + view.cursorIndex)}`
+      const metrics = ctx.measureText(beforeCursor)
+      ctx.fillRect(safeX + 26 + metrics.width, textStartY - 20 + (visible.length - 1) * lineHeight, 12, 18)
+    }
   }
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.06)'
@@ -658,14 +709,6 @@ function drawScreen(): void {
   ctx.fill()
 
   screenTexture.needsUpdate = true
-}
-
-function addCharacter(char: string): void {
-  if (activeLine.length > 45) return
-  activeLine += char
-  typedHistory.push(char)
-  typedValueEl.textContent = typedHistory.slice(-20).join('') || 'none'
-  drawScreen()
 }
 
 window.addEventListener('keydown', (event) => {
@@ -680,26 +723,74 @@ window.addEventListener('keydown', (event) => {
     })
   }
 
-  if (event.repeat) {
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    screenEngine.moveCursorLeft()
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    screenEngine.moveCursorRight()
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    screenEngine.historyPrev()
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    screenEngine.historyNext()
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'Home') {
+    event.preventDefault()
+    screenEngine.moveCursorHome()
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'End') {
+    event.preventDefault()
+    screenEngine.moveCursorEnd()
+    drawScreen()
     return
   }
 
   if (event.key === 'Backspace') {
-    activeLine = activeLine.slice(0, -1)
+    playKeySound()
+    screenEngine.backspace()
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'Delete') {
+    playKeySound()
+    screenEngine.delete()
     drawScreen()
     return
   }
 
   if (event.key === 'Enter') {
-    lines.push(activeLine)
-    activeLine = '  '
-    typedValueEl.textContent = 'ENTER'
+    if (event.repeat) return
+    playKeySound()
+    screenEngine.submit()
     drawScreen()
     return
   }
 
-  if (event.key.length === 1) {
-    addCharacter(event.key)
+  if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    playKeySound()
+    screenEngine.insertCharacter(event.key)
+    drawScreen()
   }
 })
 
@@ -716,12 +807,73 @@ window.addEventListener('pointermove', (event) => {
   pointerY = event.clientY / window.innerHeight - 0.5
 })
 
-window.addEventListener('pointerdown', () => {
+window.addEventListener('pointerdown', (event) => {
   mouseDown = true
   mouseButtonParts.forEach((part) => {
     const base = mouseButtonBaseY.get(part) ?? part.position.y
     part.position.y = base - 0.01
   })
+
+  pointer2D.x = (event.clientX / window.innerWidth) * 2 - 1
+  pointer2D.y = -(event.clientY / window.innerHeight) * 2 + 1
+
+  raycaster.setFromCamera(pointer2D, camera)
+  const intersects = raycaster.intersectObjects(allKeys, false)
+
+  if (intersects.length > 0) {
+    const clickedKey = intersects[0].object as THREE.Mesh
+    
+    for (const [code, meshes] of keyMap.entries()) {
+      if (meshes.includes(clickedKey)) {
+        playKeySound()
+        
+        meshes.forEach((k) => {
+          k.userData.press = 1
+          setTimeout(() => {
+            k.userData.press = 0
+          }, 100)
+        })
+
+        const keyLabel = legendForCode(code)
+        let char = ''
+
+        if (code === 'Enter') {
+          screenEngine.submit()
+        } else if (code === 'Backspace') {
+          screenEngine.backspace()
+        } else if (code === 'Space') {
+          screenEngine.insertCharacter(' ')
+        } else if (code === 'Tab') {
+          screenEngine.insertCharacter('  ')
+        } else if (keyLabel.length === 1) {
+          char = keyLabel
+          screenEngine.insertCharacter(char)
+        } else if (keyLabel.match(/^[0-9]$/)) {
+          screenEngine.insertCharacter(keyLabel)
+        } else {
+          const specialKeys: Record<string, string> = {
+            'Comma': ',',
+            'Period': '.',
+            'Slash': '/',
+            'Semicolon': ';',
+            'Quote': "'",
+            'BracketLeft': '[',
+            'BracketRight': ']',
+            'Backslash': '\\',
+            'Minus': '-',
+            'Equal': '=',
+            'Backquote': '`'
+          }
+          if (specialKeys[code]) {
+            screenEngine.insertCharacter(specialKeys[code])
+          }
+        }
+        
+        drawScreen()
+        break
+      }
+    }
+  }
 })
 
 window.addEventListener('pointerup', () => {
