@@ -1,0 +1,1040 @@
+import './style.css'
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+
+document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+<canvas id="scene" aria-label="Interactive retro computer scene"></canvas>
+<div class="vignette"></div>
+<div class="grain"></div>
+<div class="hud">
+  <div class="brand">
+    <p class="eyebrow">PROJECT</p>
+    <h1>HTML</h1>
+    <p class="subtitle">Hope This Moons Later</p>
+  </div>
+  <div class="controls">TYPE TO EDIT CRT | MOVE + CLICK TO DRIVE MOUSE</div>
+  <div class="footer-left">DIAL-UP SIM</div>
+  <div class="footer-right">YEAR 1995</div>
+  <div class="status">ACTIVE INPUT: <span id="typed-value">none</span></div>
+</div>
+`
+
+const canvas = document.querySelector<HTMLCanvasElement>('#scene')
+const typedValue = document.querySelector<HTMLSpanElement>('#typed-value')
+
+if (!canvas || !typedValue) {
+  throw new Error('Missing required DOM elements')
+}
+
+const typedValueEl: HTMLSpanElement = typedValue
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 1.08
+
+const scene = new THREE.Scene()
+scene.background = new THREE.Color(0x020304)
+scene.fog = new THREE.Fog(0x020304, 20, 42)
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer)
+const environmentTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.6).texture
+scene.environment = environmentTexture
+pmremGenerator.dispose()
+
+const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 100)
+const CAMERA_POS = new THREE.Vector3(0, 2.15, 17.7)
+const CAMERA_TARGET = new THREE.Vector3(0, -1.1, 0)
+camera.position.copy(CAMERA_POS)
+camera.lookAt(CAMERA_TARGET)
+
+const ambient = new THREE.AmbientLight(0xa0b8ff, 0.42)
+scene.add(ambient)
+
+const hemi = new THREE.HemisphereLight(0x9ec9ff, 0x0a0f16, 0.36)
+scene.add(hemi)
+
+const keyLight = new THREE.DirectionalLight(0xd8e6ff, 0.95)
+keyLight.position.set(7, 10, 6)
+keyLight.castShadow = true
+keyLight.shadow.mapSize.set(1024, 1024)
+scene.add(keyLight)
+
+const rim = new THREE.PointLight(0x6eb7ff, 1.35, 22)
+rim.position.set(-8, 3, -8)
+scene.add(rim)
+
+const pcKeyLight = new THREE.SpotLight(0xb9dcff, 2.1, 30, Math.PI / 8, 0.42, 1.05)
+pcKeyLight.position.set(14, 5.1, 2.8)
+pcKeyLight.castShadow = true
+pcKeyLight.shadow.mapSize.set(1024, 1024)
+scene.add(pcKeyLight)
+scene.add(pcKeyLight.target)
+
+const pcRimLight = new THREE.PointLight(0x3fd6ff, 1.35, 18)
+pcRimLight.position.set(12.5, 0.7, -6)
+scene.add(pcRimLight)
+
+const overheadLight = new THREE.SpotLight(0xe0ebff, 0.58, 34, Math.PI / 5, 0.64, 1.12)
+overheadLight.position.set(0, 10.8, 3.2)
+overheadLight.castShadow = true
+overheadLight.shadow.mapSize.set(1024, 1024)
+overheadLight.target.position.set(0, -1.4, 2.8)
+scene.add(overheadLight)
+scene.add(overheadLight.target)
+
+const deskLampLight = new THREE.SpotLight(0xffe4bf, 0.3, 22, Math.PI / 5, 0.56, 1.25)
+deskLampLight.position.set(-8.2, 4.7, 7.2)
+deskLampLight.target.position.set(-0.2, -2.7, 4.4)
+scene.add(deskLampLight)
+scene.add(deskLampLight.target)
+
+const pcSoftFill = new THREE.SpotLight(0x9ad7ff, 1.55, 20, Math.PI / 6, 0.7, 1.1)
+pcSoftFill.position.set(11.8, 2.2, 2.3)
+scene.add(pcSoftFill)
+scene.add(pcSoftFill.target)
+
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(18, 80),
+  new THREE.MeshStandardMaterial({ color: 0x0a0d11, roughness: 0.92, metalness: 0.1 }),
+)
+floor.rotation.x = -Math.PI / 2
+floor.position.y = -4.05
+floor.receiveShadow = true
+scene.add(floor)
+
+for (let i = 0; i < 3; i += 1) {
+  const ring = new THREE.LineLoop(
+    new THREE.CircleGeometry(7 + i * 3.4, 128),
+    new THREE.LineBasicMaterial({ color: 0x27313d, transparent: true, opacity: 0.5 - i * 0.12 }),
+  )
+  ring.rotation.x = -Math.PI / 2
+  ring.position.y = -3.98
+  scene.add(ring)
+}
+
+const starsGeom = new THREE.BufferGeometry()
+const stars = new Float32Array(1800)
+for (let i = 0; i < stars.length; i += 3) {
+  stars[i] = (Math.random() - 0.5) * 65
+  stars[i + 1] = (Math.random() - 0.1) * 32
+  stars[i + 2] = (Math.random() - 0.5) * 65
+}
+starsGeom.setAttribute('position', new THREE.BufferAttribute(stars, 3))
+const starField = new THREE.Points(
+  starsGeom,
+  new THREE.PointsMaterial({ color: 0xe7f5ff, size: 0.07, transparent: true, opacity: 0.7 }),
+)
+scene.add(starField)
+
+const moonAnchor = new THREE.Group()
+moonAnchor.position.set(-15.5, 8.8, -24)
+scene.add(moonAnchor)
+
+const moonGlowMaterial = new THREE.MeshBasicMaterial({ color: 0xa9c9ea, transparent: true, opacity: 0.2 })
+const moonGlow = new THREE.Mesh(new THREE.SphereGeometry(3.4, 32, 32), moonGlowMaterial)
+moonAnchor.add(moonGlow)
+
+const moonLight = new THREE.PointLight(0xc9ddff, 0.92, 42)
+moonAnchor.add(moonLight)
+
+const moonLoader = new GLTFLoader()
+moonLoader.load(
+  '/models/luna_earths_companion.glb',
+  (gltf) => {
+    const loadedMoon = gltf.scene
+
+    loadedMoon.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        node.castShadow = false
+        node.receiveShadow = false
+
+        if (Array.isArray(node.material)) {
+          node.material.forEach((material) => {
+            if (material instanceof THREE.MeshStandardMaterial) {
+              material.envMapIntensity = 1.35
+              material.roughness = Math.min(1, material.roughness * 1.05)
+            }
+          })
+        } else if (node.material instanceof THREE.MeshStandardMaterial) {
+          node.material.envMapIntensity = 1.35
+          node.material.roughness = Math.min(1, node.material.roughness * 1.05)
+        }
+      }
+    })
+
+    const bbox = new THREE.Box3().setFromObject(loadedMoon)
+    const size = new THREE.Vector3()
+    const center = new THREE.Vector3()
+    bbox.getSize(size)
+    bbox.getCenter(center)
+
+    const targetDiameter = 5.2
+    const scale = targetDiameter / Math.max(size.x, size.y, size.z, 0.001)
+    loadedMoon.scale.setScalar(scale)
+    loadedMoon.position.sub(center.multiplyScalar(scale))
+    loadedMoon.rotation.y = Math.PI * 0.2
+
+    moonAnchor.add(loadedMoon)
+  },
+  undefined,
+  () => {
+    const fallbackMoon = new THREE.Mesh(
+      new THREE.SphereGeometry(1.7, 40, 40),
+      new THREE.MeshStandardMaterial({
+        color: 0xcdd4de,
+        roughness: 0.95,
+        metalness: 0.02,
+        emissive: 0x4b5c74,
+        emissiveIntensity: 0.18,
+      }),
+    )
+    moonAnchor.add(fallbackMoon)
+  },
+)
+
+const rig = new THREE.Group()
+rig.position.y = -0.75
+rig.rotation.set(0.02, 0, 0)
+scene.add(rig)
+
+const shellMaterial = new THREE.MeshStandardMaterial({ color: 0xd9d7d0, roughness: 0.76, metalness: 0.08 })
+const powerLedMaterial = new THREE.MeshStandardMaterial({
+  color: 0x1b2735,
+  emissive: 0x3fd6ff,
+  emissiveIntensity: 0.8,
+  roughness: 0.3,
+  metalness: 0.2,
+})
+
+const monitorBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x1f2733, roughness: 0.4, metalness: 0.32 })
+const monitorTrimMaterial = new THREE.MeshStandardMaterial({ color: 0x0e141e, roughness: 0.45, metalness: 0.35 })
+const pcBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x202833, roughness: 0.48, metalness: 0.26 })
+
+const monitor = new THREE.Group()
+monitor.position.set(0, 2.34, -0.82)
+monitor.scale.setScalar(1.14)
+rig.add(monitor)
+
+const monitorBody = new THREE.Mesh(new THREE.BoxGeometry(9.6, 5.8, 0.55), monitorBodyMaterial)
+monitorBody.castShadow = true
+monitor.add(monitorBody)
+
+const bezel = new THREE.Mesh(new THREE.BoxGeometry(8.9, 5.15, 0.14), monitorTrimMaterial)
+bezel.position.set(0, 0, 0.29)
+bezel.castShadow = true
+monitor.add(bezel)
+
+const monitorStand = new THREE.Group()
+monitorStand.position.set(0, -3.3, -0.05)
+monitor.add(monitorStand)
+
+const standNeck = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2.15, 0.52), monitorTrimMaterial)
+standNeck.castShadow = true
+monitorStand.add(standNeck)
+
+const standFoot = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.1, 0.24, 40), monitorTrimMaterial)
+standFoot.position.set(0, -1.2, 0.7)
+standFoot.castShadow = true
+monitorStand.add(standFoot)
+
+const screenCanvas = document.createElement('canvas')
+screenCanvas.width = 1280
+screenCanvas.height = 720
+const screenContext = screenCanvas.getContext('2d')
+
+if (!screenContext) {
+  throw new Error('2D context unavailable')
+}
+
+const crtContext: CanvasRenderingContext2D = screenContext
+
+const screenTexture = new THREE.CanvasTexture(screenCanvas)
+screenTexture.colorSpace = THREE.SRGBColorSpace
+screenTexture.minFilter = THREE.LinearFilter
+
+const screen = new THREE.Mesh(
+  new THREE.PlaneGeometry(8.42, 4.73),
+  new THREE.MeshBasicMaterial({ map: screenTexture, toneMapped: false }),
+)
+screen.position.set(0, 0, 0.48)
+screen.renderOrder = 2
+monitor.add(screen)
+
+const pcTower = new THREE.Group()
+pcTower.position.set(10.95, -1.62, -3.2)
+pcTower.rotation.y = -0.34
+pcTower.scale.setScalar(1.1)
+rig.add(pcTower)
+
+pcKeyLight.target = pcTower
+
+const pcModelWrap = new THREE.Group()
+pcTower.add(pcModelWrap)
+
+const pcAccentLight = new THREE.PointLight(0x56ddff, 1.45, 14)
+pcAccentLight.position.set(-0.8, 1.1, 0.9)
+pcTower.add(pcAccentLight)
+
+const pcBaseShadow = new THREE.Mesh(
+  new THREE.CircleGeometry(1.55, 28),
+  new THREE.MeshBasicMaterial({ color: 0x050709, transparent: true, opacity: 0.42 }),
+)
+pcBaseShadow.rotation.x = -Math.PI / 2
+pcBaseShadow.position.set(0, -3.45, 0)
+pcTower.add(pcBaseShadow)
+
+const gltfLoader = new GLTFLoader()
+
+gltfLoader.load(
+  '/models/pc_model.glb',
+  (gltf) => {
+    const loadedPc = gltf.scene
+    const PC_MODEL_YAW = Math.PI * 0.86
+
+    loadedPc.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        node.castShadow = true
+        node.receiveShadow = true
+
+        if (Array.isArray(node.material)) {
+          node.material.forEach((material) => {
+            if (material instanceof THREE.MeshStandardMaterial) {
+              material.envMapIntensity = 1.7
+              material.roughness = Math.min(1, material.roughness * 0.92)
+              material.metalness = Math.min(1, material.metalness * 0.95)
+              material.color.multiplyScalar(1.1)
+            }
+          })
+        } else if (node.material instanceof THREE.MeshStandardMaterial) {
+          node.material.envMapIntensity = 1.7
+          node.material.roughness = Math.min(1, node.material.roughness * 0.92)
+          node.material.metalness = Math.min(1, node.material.metalness * 0.95)
+          node.material.color.multiplyScalar(1.1)
+        }
+      }
+    })
+
+    const bbox = new THREE.Box3().setFromObject(loadedPc)
+    const size = new THREE.Vector3()
+    const center = new THREE.Vector3()
+    bbox.getSize(size)
+    bbox.getCenter(center)
+
+    const targetHeight = 7.8
+    const scale = targetHeight / Math.max(size.y, 0.001)
+    loadedPc.scale.setScalar(scale)
+    loadedPc.position.sub(center.multiplyScalar(scale))
+    loadedPc.position.y += -3.22 + (size.y * scale) / 2
+    loadedPc.rotation.y = PC_MODEL_YAW
+
+    pcModelWrap.add(loadedPc)
+  },
+  undefined,
+  (error) => {
+    console.error('Failed to load PC GLB model:', error)
+
+    const fallback = new THREE.Mesh(new THREE.BoxGeometry(3.3, 7.2, 6), pcBodyMaterial)
+    fallback.castShadow = true
+    fallback.position.y = -0.2
+    pcModelWrap.add(fallback)
+  },
+)
+
+pcSoftFill.target = pcTower
+
+const keyboard = new THREE.Group()
+keyboard.position.set(0, -3.06, 4.68)
+keyboard.rotation.x = 0.08
+keyboard.scale.setScalar(0.86)
+rig.add(keyboard)
+
+const keyboardShellMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1f2a, roughness: 0.52, metalness: 0.26 })
+const keyboardDeckMaterial = new THREE.MeshStandardMaterial({ color: 0x2a3140, roughness: 0.45, metalness: 0.22 })
+
+const keyboardBody = new THREE.Mesh(new THREE.BoxGeometry(13.4, 0.6, 5.35), keyboardShellMaterial)
+keyboardBody.castShadow = true
+keyboard.add(keyboardBody)
+
+const keyboardDeck = new THREE.Mesh(new THREE.BoxGeometry(12.75, 0.08, 4.75), keyboardDeckMaterial)
+keyboardDeck.position.set(0, 0.34, -0.08)
+keyboard.add(keyboardDeck)
+
+const keyboardLip = new THREE.Mesh(new THREE.BoxGeometry(13.25, 0.22, 0.3), keyboardDeckMaterial)
+keyboardLip.position.set(0, 0.2, 2.48)
+keyboard.add(keyboardLip)
+
+const keyboardUnderglowMaterial = new THREE.MeshStandardMaterial({
+  color: 0x0d131c,
+  emissive: 0x3dc4ff,
+  emissiveIntensity: 0.02,
+  roughness: 0.4,
+  metalness: 0.12,
+})
+const keyboardUnderglow = new THREE.Mesh(new THREE.BoxGeometry(12.25, 0.05, 0.08), keyboardUnderglowMaterial)
+keyboardUnderglow.position.set(0, -0.2, 2.62)
+keyboard.add(keyboardUnderglow)
+
+const keyMaterial = new THREE.MeshStandardMaterial({ color: 0xb9c1cf, roughness: 0.62, metalness: 0.04 })
+const accentKeyMaterial = new THREE.MeshStandardMaterial({ color: 0xc2915b, roughness: 0.58, metalness: 0.06 })
+const coolKeyMaterial = new THREE.MeshStandardMaterial({ color: 0x2b5c99, roughness: 0.54, metalness: 0.08 })
+const keyMap = new Map<string, THREE.Mesh[]>()
+const allKeys: THREE.Mesh[] = []
+const legendMaterialCache = new Map<string, THREE.MeshStandardMaterial>()
+
+type KeyTone = 'normal' | 'warm' | 'cool'
+type KeyLayout = { code: string; width?: number; tone?: KeyTone }
+
+const KEY_LABELS: Record<string, string> = {
+  Escape: 'ESC',
+  Backquote: '` ~',
+  Minus: '- _',
+  Equal: '= +',
+  Backspace: 'BACKSPACE',
+  Tab: 'TAB',
+  BracketLeft: '[ {',
+  BracketRight: '] }',
+  Backslash: '\\ |',
+  CapsLock: 'CAPS',
+  Semicolon: '; :',
+  Quote: "' \"",
+  Enter: 'ENTER',
+  ShiftLeft: 'SHIFT',
+  ShiftRight: 'SHIFT',
+  Comma: ', <',
+  Period: '. >',
+  Slash: '/ ?',
+  ControlLeft: 'CTRL',
+  ControlRight: 'CTRL',
+  MetaLeft: 'WIN',
+  MetaRight: 'WIN',
+  AltLeft: 'ALT',
+  AltRight: 'ALT',
+  Space: 'SPACE',
+  ContextMenu: 'MENU',
+  Insert: 'INS',
+  Delete: 'DEL',
+  Home: 'HOME',
+  End: 'END',
+  PageUp: 'PGUP',
+  PageDown: 'PGDN',
+  ArrowUp: 'UP',
+  ArrowLeft: 'LEFT',
+  ArrowDown: 'DOWN',
+  ArrowRight: 'RIGHT',
+  NumLock: 'NUM',
+  NumpadDivide: '/',
+  NumpadMultiply: '*',
+  NumpadSubtract: '-',
+  NumpadAdd: '+',
+  NumpadDecimal: '.',
+  NumpadEnter: 'ENTER',
+}
+
+for (let i = 1; i <= 12; i += 1) {
+  KEY_LABELS[`F${i}`] = `F${i}`
+}
+
+for (let i = 0; i <= 9; i += 1) {
+  const key = i === 0 ? 'Digit0' : `Digit${i}`
+  const shifted = [')', '!', '@', '#', '$', '%', '^', '&', '*', '('][i]
+  KEY_LABELS[key] = `${i} ${shifted}`
+}
+
+for (let i = 0; i <= 9; i += 1) {
+  const key = `Numpad${i}`
+  KEY_LABELS[key] = `${i}`
+}
+
+for (let code = 65; code <= 90; code += 1) {
+  const letter = String.fromCharCode(code)
+  KEY_LABELS[`Key${letter}`] = letter
+}
+
+function sideMaterialForTone(tone: KeyTone): THREE.MeshStandardMaterial {
+  if (tone === 'warm') return accentKeyMaterial
+  if (tone === 'cool') return coolKeyMaterial
+  return keyMaterial
+}
+
+function legendForCode(code: string): string {
+  return KEY_LABELS[code] ?? code.replace('Key', '')
+}
+
+function topMaterialForLabel(label: string, tone: KeyTone): THREE.MeshStandardMaterial {
+  const cacheKey = `${tone}:${label}`
+  const existing = legendMaterialCache.get(cacheKey)
+  if (existing) {
+    return existing
+  }
+
+  const legendCanvas = document.createElement('canvas')
+  legendCanvas.width = 256
+  legendCanvas.height = 256
+  const ctx = legendCanvas.getContext('2d')
+
+  if (!ctx) {
+    return sideMaterialForTone(tone)
+  }
+
+  const base = tone === 'warm' ? '#c99863' : tone === 'cool' ? '#2f67ac' : '#bcc5d3'
+  const ink = tone === 'cool' ? '#f2f8ff' : '#1f2a38'
+
+  ctx.fillStyle = base
+  ctx.fillRect(0, 0, 256, 256)
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)'
+  ctx.lineWidth = 6
+  ctx.strokeRect(9, 9, 238, 238)
+
+  ctx.fillStyle = ink
+  ctx.font = 'bold 42px "Segoe UI", Arial, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  const lines = label.split('\n')
+  if (lines.length === 1) {
+    ctx.fillText(lines[0], 128, 132)
+  } else {
+    ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif'
+    lines.forEach((line, index) => {
+      ctx.fillText(line, 128, 106 + index * 54)
+    })
+  }
+
+  const texture = new THREE.CanvasTexture(legendCanvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy()
+  texture.minFilter = THREE.LinearFilter
+
+  const material = new THREE.MeshStandardMaterial({
+    map: texture,
+    roughness: 0.38,
+    metalness: 0.08,
+  })
+  legendMaterialCache.set(cacheKey, material)
+  return material
+}
+
+function createKey(
+  code: string,
+  x: number,
+  z: number,
+  width = 1,
+  tone: KeyTone = 'normal',
+): void {
+  const keyWidth = width * 0.45
+  const keyHeight = 0.16
+  const keyDepth = 0.38
+  const side = sideMaterialForTone(tone)
+  const top = topMaterialForLabel(legendForCode(code), tone)
+  const keyMaterials: THREE.Material[] = [side, side, top, side, side, side]
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(keyWidth, keyHeight, keyDepth), keyMaterials)
+  mesh.castShadow = true
+  mesh.position.set(x + keyWidth / 2, 0.43, z)
+  mesh.userData.restY = mesh.position.y
+  mesh.userData.press = 0
+  allKeys.push(mesh)
+
+  const existing = keyMap.get(code) ?? []
+  existing.push(mesh)
+  keyMap.set(code, existing)
+  keyboard.add(mesh)
+}
+
+const primaryRows: KeyLayout[][] = [
+  [
+    { code: 'Escape', tone: 'warm' },
+    { code: 'F1' },
+    { code: 'F2' },
+    { code: 'F3' },
+    { code: 'F4' },
+    { code: 'F5' },
+    { code: 'F6' },
+    { code: 'F7' },
+    { code: 'F8' },
+    { code: 'F9' },
+    { code: 'F10' },
+    { code: 'F11' },
+    { code: 'F12' },
+  ],
+  [
+    { code: 'Backquote' },
+    { code: 'Digit1' },
+    { code: 'Digit2' },
+    { code: 'Digit3' },
+    { code: 'Digit4' },
+    { code: 'Digit5' },
+    { code: 'Digit6' },
+    { code: 'Digit7' },
+    { code: 'Digit8' },
+    { code: 'Digit9' },
+    { code: 'Digit0' },
+    { code: 'Minus' },
+    { code: 'Equal' },
+    { code: 'Backspace', width: 1.9 },
+  ],
+  [
+    { code: 'Tab', width: 1.45 },
+    { code: 'KeyQ' },
+    { code: 'KeyW' },
+    { code: 'KeyE' },
+    { code: 'KeyR' },
+    { code: 'KeyT' },
+    { code: 'KeyY' },
+    { code: 'KeyU' },
+    { code: 'KeyI' },
+    { code: 'KeyO' },
+    { code: 'KeyP' },
+    { code: 'BracketLeft' },
+    { code: 'BracketRight' },
+    { code: 'Backslash', width: 1.45 },
+  ],
+  [
+    { code: 'CapsLock', width: 1.85 },
+    { code: 'KeyA' },
+    { code: 'KeyS' },
+    { code: 'KeyD' },
+    { code: 'KeyF' },
+    { code: 'KeyG' },
+    { code: 'KeyH' },
+    { code: 'KeyJ' },
+    { code: 'KeyK' },
+    { code: 'KeyL' },
+    { code: 'Semicolon' },
+    { code: 'Quote' },
+    { code: 'Enter', width: 2.25, tone: 'cool' },
+  ],
+  [
+    { code: 'ShiftLeft', width: 2.25 },
+    { code: 'KeyZ' },
+    { code: 'KeyX' },
+    { code: 'KeyC' },
+    { code: 'KeyV' },
+    { code: 'KeyB' },
+    { code: 'KeyN' },
+    { code: 'KeyM' },
+    { code: 'Comma' },
+    { code: 'Period' },
+    { code: 'Slash' },
+    { code: 'ShiftRight', width: 2.6 },
+  ],
+  [
+    { code: 'ControlLeft', width: 1.35 },
+    { code: 'MetaLeft', width: 1.35 },
+    { code: 'AltLeft', width: 1.35 },
+    { code: 'Space', width: 5, tone: 'cool' },
+    { code: 'AltRight', width: 1.35 },
+    { code: 'MetaRight', width: 1.35 },
+    { code: 'ContextMenu', width: 1.35 },
+    { code: 'ControlRight', width: 1.35 },
+  ],
+]
+
+const unit = 0.45
+const gap = 0.08
+const rowDepth = 0.64
+const rowStart = -1.86
+const primaryStartX = -5.66
+
+primaryRows.forEach((row, rowIndex) => {
+  let cursor = primaryStartX
+  const rowZ = rowStart + rowIndex * rowDepth
+
+  row.forEach((keyInfo) => {
+    createKey(keyInfo.code, cursor, rowZ, keyInfo.width ?? 1, keyInfo.tone ?? 'normal')
+    cursor += (keyInfo.width ?? 1) * unit + gap
+  })
+})
+
+const navKeys: KeyLayout[][] = [
+  [
+    { code: 'Insert' },
+    { code: 'Home' },
+    { code: 'PageUp' },
+  ],
+  [
+    { code: 'Delete' },
+    { code: 'End' },
+    { code: 'PageDown' },
+  ],
+  [
+    { code: 'ArrowUp' },
+  ],
+  [
+    { code: 'ArrowLeft' },
+    { code: 'ArrowDown' },
+    { code: 'ArrowRight' },
+  ],
+]
+
+navKeys.forEach((row, rowIndex) => {
+  const total = row.reduce((sum, key) => sum + (key.width ?? 1) * unit + gap, -gap)
+  let cursor = 3.05 - total / 2
+  const rowZ = rowStart + rowIndex * rowDepth
+
+  row.forEach((keyInfo) => {
+    createKey(keyInfo.code, cursor, rowZ, keyInfo.width ?? 1, keyInfo.tone ?? 'normal')
+    cursor += (keyInfo.width ?? 1) * unit + gap
+  })
+})
+
+const numpadRows: KeyLayout[][] = [
+  [
+    { code: 'NumLock' },
+    { code: 'NumpadDivide' },
+    { code: 'NumpadMultiply' },
+    { code: 'NumpadSubtract' },
+  ],
+  [
+    { code: 'Numpad7' },
+    { code: 'Numpad8' },
+    { code: 'Numpad9' },
+    { code: 'NumpadAdd', width: 1.1, tone: 'cool' },
+  ],
+  [
+    { code: 'Numpad4' },
+    { code: 'Numpad5' },
+    { code: 'Numpad6' },
+    { code: 'NumpadAddGhost', width: 1.1, tone: 'cool' },
+  ],
+  [
+    { code: 'Numpad1' },
+    { code: 'Numpad2' },
+    { code: 'Numpad3' },
+    { code: 'NumpadEnter', width: 1.1, tone: 'cool' },
+  ],
+  [
+    { code: 'Numpad0', width: 2.1 },
+    { code: 'NumpadDecimal' },
+    { code: 'NumpadEnterGhost', width: 1.1, tone: 'cool' },
+  ],
+]
+
+numpadRows.forEach((row, rowIndex) => {
+  const total = row.reduce((sum, key) => sum + (key.width ?? 1) * unit + gap, -gap)
+  let cursor = 4.92 - total / 2
+  const rowZ = rowStart + rowIndex * rowDepth
+
+  row.forEach((keyInfo) => {
+    const visualCode = keyInfo.code === 'NumpadAddGhost' ? 'NumpadAdd' : keyInfo.code === 'NumpadEnterGhost' ? 'NumpadEnter' : keyInfo.code
+    createKey(visualCode, cursor, rowZ, keyInfo.width ?? 1, keyInfo.tone ?? 'normal')
+    cursor += (keyInfo.width ?? 1) * unit + gap
+  })
+})
+
+const mouse = new THREE.Group()
+mouse.position.set(6.7, -2.96, 4.35)
+rig.add(mouse)
+
+const mouseModelWrap = new THREE.Group()
+mouse.add(mouseModelWrap)
+
+let mouseWheelPart: THREE.Object3D | null = null
+const mouseButtonParts: THREE.Object3D[] = []
+const mouseButtonBaseY = new WeakMap<THREE.Object3D, number>()
+
+gltfLoader.load(
+  '/models/pc_mouse_type-r.glb',
+  (gltf) => {
+    const loadedMouse = gltf.scene
+
+    loadedMouse.traverse((node) => {
+      if (node instanceof THREE.Mesh) {
+        node.castShadow = true
+        node.receiveShadow = true
+
+        if (Array.isArray(node.material)) {
+          node.material.forEach((material) => {
+            if (material instanceof THREE.MeshStandardMaterial) {
+              material.envMapIntensity = 1.25
+              material.roughness = Math.min(1, material.roughness * 0.96)
+            }
+          })
+        } else if (node.material instanceof THREE.MeshStandardMaterial) {
+          node.material.envMapIntensity = 1.25
+          node.material.roughness = Math.min(1, node.material.roughness * 0.96)
+        }
+      }
+
+      const lowered = node.name.toLowerCase()
+      if (lowered.includes('wheel') || lowered.includes('scroll')) {
+        mouseWheelPart = node
+      }
+      if (lowered.includes('left') || lowered.includes('right') || lowered.includes('button') || lowered.includes('click')) {
+        mouseButtonParts.push(node)
+        mouseButtonBaseY.set(node, node.position.y)
+      }
+    })
+
+    const bbox = new THREE.Box3().setFromObject(loadedMouse)
+    const size = new THREE.Vector3()
+    const center = new THREE.Vector3()
+    bbox.getSize(size)
+    bbox.getCenter(center)
+
+    const targetLength = 1.95
+    const scale = targetLength / Math.max(size.z, 0.001)
+    loadedMouse.scale.setScalar(scale)
+    loadedMouse.position.sub(center.multiplyScalar(scale))
+    loadedMouse.position.y += (size.y * scale) / 2 + 0.02
+    loadedMouse.rotation.y = Math.PI * 1.9
+    loadedMouse.rotation.x = -0.02
+
+    mouseModelWrap.add(loadedMouse)
+  },
+  undefined,
+  () => {
+    const fallbackBody = new THREE.Mesh(new THREE.SphereGeometry(0.63, 28, 20), shellMaterial)
+    fallbackBody.scale.set(1.06, 0.62, 1.3)
+    fallbackBody.castShadow = true
+    fallbackBody.position.y = 0.42
+    mouseModelWrap.add(fallbackBody)
+  },
+)
+
+const cableMaterial = new THREE.MeshStandardMaterial({ color: 0x1f242d, roughness: 0.85, metalness: 0.08 })
+
+const mouseCableCurve = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0.5, -3.1, 4.9),
+  new THREE.Vector3(2.3, -3.2, 5.6),
+  new THREE.Vector3(4.1, -3.05, 5.05),
+  new THREE.Vector3(6.0, -2.95, 4.35),
+])
+const mouseCable = new THREE.Mesh(new THREE.TubeGeometry(mouseCableCurve, 48, 0.04, 8, false), cableMaterial)
+mouseCable.castShadow = true
+rig.add(mouseCable)
+
+const lines = [
+  '<!doctype html>',
+  '<html lang="en">',
+  '  <head>',
+  '    <title>HTML // Hope This Moons Later</title>',
+  '  </head>',
+  '  <body>',
+  '    <!-- type to mutate this memory -->',
+  '  </body>',
+  '</html>',
+]
+
+let activeLine = '  <p class="signal">dial-up is alive</p>'
+let cursorOn = true
+let mouseDown = false
+let wheelTarget = 0
+let wheelValue = 0
+let pointerX = 0
+let pointerY = 0
+
+const typedHistory: string[] = []
+
+function drawScreen(): void {
+  const ctx = crtContext
+  const { width, height } = screenCanvas
+  const safeX = 52
+  const safeY = 42
+  const safeW = width - safeX * 2
+  const safeH = height - safeY * 2
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, height)
+  gradient.addColorStop(0, '#cad8e2')
+  gradient.addColorStop(0.5, '#9cc1d6')
+  gradient.addColorStop(1, '#5f8ea8')
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, width, height)
+
+  for (let y = 0; y < height; y += 4) {
+    ctx.fillStyle = y % 8 === 0 ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.03)'
+    ctx.fillRect(0, y, width, 2)
+  }
+
+  ctx.fillStyle = 'rgba(9, 23, 35, 0.8)'
+  ctx.fillRect(safeX, safeY, safeW, safeH)
+
+  ctx.font = '26px "Courier New", monospace'
+  ctx.fillStyle = '#9ce8ff'
+  ctx.fillText('C:/HTML/LOOP/index.html', safeX + 24, safeY + 38)
+
+  ctx.font = '23px "Courier New", monospace'
+  ctx.fillStyle = '#d7f9ff'
+
+  const visible = [...lines.slice(-9), activeLine]
+  const textStartY = safeY + 84
+  const lineHeight = 42
+  visible.forEach((line, i) => {
+    ctx.fillText(line, safeX + 24, textStartY + i * lineHeight)
+  })
+
+  if (cursorOn) {
+    const metrics = ctx.measureText(activeLine)
+    ctx.fillRect(safeX + 31 + metrics.width, textStartY - 26 + visible.length * lineHeight, 14, 22)
+  }
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.06)'
+  ctx.beginPath()
+  ctx.ellipse(width / 2, height / 2, width * 0.5, height * 0.44, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  screenTexture.needsUpdate = true
+}
+
+function addCharacter(char: string): void {
+  if (activeLine.length > 45) return
+  activeLine += char
+  typedHistory.push(char)
+  typedValueEl.textContent = typedHistory.slice(-20).join('') || 'none'
+  drawScreen()
+}
+
+window.addEventListener('keydown', (event) => {
+  if (event.code === 'Space') {
+    event.preventDefault()
+  }
+
+  const keys = keyMap.get(event.code)
+  if (keys) {
+    keys.forEach((k) => {
+      k.userData.press = 1
+    })
+  }
+
+  if (event.repeat) {
+    return
+  }
+
+  if (event.key === 'Backspace') {
+    activeLine = activeLine.slice(0, -1)
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'Enter') {
+    lines.push(activeLine)
+    activeLine = '  '
+    typedValueEl.textContent = 'ENTER'
+    drawScreen()
+    return
+  }
+
+  if (event.key.length === 1) {
+    addCharacter(event.key)
+  }
+})
+
+window.addEventListener('keyup', (event) => {
+  const keys = keyMap.get(event.code)
+  if (!keys) return
+  keys.forEach((k) => {
+    k.userData.press = 0
+  })
+})
+
+window.addEventListener('pointermove', (event) => {
+  pointerX = event.clientX / window.innerWidth - 0.5
+  pointerY = event.clientY / window.innerHeight - 0.5
+})
+
+window.addEventListener('pointerdown', () => {
+  mouseDown = true
+  mouseButtonParts.forEach((part) => {
+    const base = mouseButtonBaseY.get(part) ?? part.position.y
+    part.position.y = base - 0.01
+  })
+})
+
+window.addEventListener('pointerup', () => {
+  mouseDown = false
+  mouseButtonParts.forEach((part) => {
+    const base = mouseButtonBaseY.get(part) ?? part.position.y
+    part.position.y = base
+  })
+})
+
+window.addEventListener('wheel', (event) => {
+  wheelTarget += event.deltaY * 0.0004
+})
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(window.innerWidth, window.innerHeight)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  composer.setSize(window.innerWidth, window.innerHeight)
+  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  bloomPass.setSize(window.innerWidth, window.innerHeight)
+})
+
+setInterval(() => {
+  cursorOn = !cursorOn
+  drawScreen()
+}, 460)
+
+drawScreen()
+
+const clock = new THREE.Clock()
+
+const renderPass = new RenderPass(scene, camera)
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.0, 0.2, 1.02)
+const composer = new EffectComposer(renderer)
+composer.addPass(renderPass)
+composer.addPass(bloomPass)
+
+function tick(): void {
+  const elapsed = clock.getElapsedTime()
+
+  camera.position.copy(CAMERA_POS)
+  camera.lookAt(CAMERA_TARGET)
+
+  allKeys.forEach((key) => {
+    const restY = Number(key.userData.restY)
+    const press = Number(key.userData.press)
+    const targetY = restY - press * 0.08
+    key.position.y = THREE.MathUtils.lerp(key.position.y, targetY, 0.18)
+  })
+
+  const desiredMouseX = 6.35 + pointerX * 1.2
+  const desiredMouseZ = 4.2 + pointerY * 0.9
+
+  // Keep the mouse outside the keyboard footprint to prevent model clipping.
+  const keyboardHalfWidth = (13.4 * 0.86) / 2
+  const mouseClearance = 0.95
+  const minSafeMouseX = keyboard.position.x + keyboardHalfWidth + mouseClearance
+
+  mouse.position.x = THREE.MathUtils.lerp(mouse.position.x, Math.max(desiredMouseX, minSafeMouseX), 0.1)
+  mouse.position.z = THREE.MathUtils.lerp(mouse.position.z, desiredMouseZ, 0.1)
+  mouse.rotation.z = THREE.MathUtils.lerp(mouse.rotation.z, pointerX * -0.25, 0.1)
+  mouse.rotation.x = THREE.MathUtils.lerp(mouse.rotation.x, (mouseDown ? 0.14 : 0.03) + pointerY * 0.12, 0.15)
+
+  wheelValue = THREE.MathUtils.lerp(wheelValue, wheelTarget, 0.14)
+  if (mouseWheelPart) {
+    mouseWheelPart.rotation.x = wheelValue * 1.4
+  }
+  mouseModelWrap.rotation.y = wheelValue * 0.08
+
+  const ledPulse = 0.45 + (Math.sin(elapsed * 2.2) * 0.5 + 0.5) * 0.95
+  const moonPulse = 0.5 + (Math.sin(elapsed * 0.55 + 0.7) * 0.5 + 0.5) * 0.7
+
+  moonAnchor.rotation.y += 0.0005
+  moonGlow.scale.setScalar(1 + moonPulse * 0.08)
+  moonGlowMaterial.opacity = 0.16 + moonPulse * 0.12
+  moonLight.intensity = 0.78 + moonPulse * 0.82
+
+  powerLedMaterial.emissiveIntensity = ledPulse
+  pcAccentLight.intensity = 1.0 + (Math.sin(elapsed * 2.7 + 0.5) * 0.5 + 0.5) * 1.05
+  pcRimLight.intensity = 1.25 + (Math.sin(elapsed * 2.4 + 1.8) * 0.5 + 0.5) * 0.95
+  pcSoftFill.intensity = 1.0 + (Math.sin(elapsed * 1.8 + 0.9) * 0.5 + 0.5) * 0.32
+  keyboardUnderglowMaterial.emissiveIntensity = 0.02
+  starField.rotation.y += 0.0008
+  starField.rotation.x = Math.sin(elapsed * 0.1) * 0.06
+
+  composer.render()
+  requestAnimationFrame(tick)
+}
+
+tick()

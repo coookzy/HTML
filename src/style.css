@@ -1,0 +1,225 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=VT323&display=swap');
+
+:root {
+  --bg: #040608;
+  --ink: #d6e0ef;
+  --muted: #8f97a6;
+  --accent: #7fe0ff;
+  --accent-warm: #f4bf79;
+  --panel: rgba(13, 16, 22, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 14% 25%, rgba(56, 98, 133, 0.18), transparent 30%),
+    radial-gradient(circle at 84% 11%, rgba(194, 124, 42, 0.13), transparent 22%),
+    radial-gradient(circle at 50% 55%, rgba(73, 128, 180, 0.08), transparent 45%),
+    var(--bg);
+  font-family: 'Orbitron', sans-serif;
+}
+
+#scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  animation: scene-enter 1.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.vignette,
+.grain,
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.vignette {
+  background: radial-gradient(circle at 50% 45%, transparent 38%, rgba(0, 0, 0, 0.64) 100%);
+}
+
+.grain {
+  opacity: 0.18;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 4px);
+  mix-blend-mode: screen;
+  animation: grain-pan 8s linear infinite;
+}
+
+.hud {
+  padding: 1.3rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.8rem;
+}
+
+.brand {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  background: var(--panel);
+  border: 1px solid rgba(160, 194, 227, 0.32);
+  padding: 0.85rem 1rem;
+  width: fit-content;
+  border-radius: 0.1rem;
+  animation: rise 0.8s ease-out;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--muted);
+  letter-spacing: 0.24em;
+  font-size: 0.62rem;
+}
+
+.brand h1 {
+  margin: 0.12rem 0;
+  font-size: clamp(1.5rem, 2.2vw, 2.5rem);
+  letter-spacing: 0.1em;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--accent-warm);
+  letter-spacing: 0.16em;
+}
+
+.controls {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+  background: rgba(14, 18, 27, 0.72);
+  border: 1px solid rgba(130, 190, 220, 0.38);
+  padding: 0.6rem 0.85rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  animation: rise 0.9s ease-out;
+}
+
+.status {
+  grid-column: 1 / span 2;
+  grid-row: 2;
+  align-self: end;
+  justify-self: center;
+  font-family: 'VT323', monospace;
+  font-size: clamp(1.15rem, 2.5vw, 1.8rem);
+  letter-spacing: 0.08em;
+  background: rgba(9, 11, 17, 0.62);
+  border: 1px solid rgba(127, 224, 255, 0.24);
+  padding: 0.28rem 0.82rem;
+  color: #c5edff;
+  animation: rise 1s ease-out;
+}
+
+#typed-value {
+  color: #ffcb80;
+}
+
+.footer-left,
+.footer-right {
+  grid-row: 3;
+  font-size: 0.68rem;
+  color: rgba(220, 230, 245, 0.86);
+  letter-spacing: 0.18em;
+  align-self: end;
+  animation: rise 1.2s ease-out;
+}
+
+.footer-left {
+  grid-column: 1;
+}
+
+.footer-right {
+  grid-column: 2;
+  justify-self: end;
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scene-enter {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes grain-pan {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -12px, 0);
+  }
+}
+
+@media (max-width: 700px) {
+  .hud {
+    padding: 0.8rem;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr auto auto;
+  }
+
+  .brand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .controls {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .status {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: start;
+    align-self: end;
+  }
+
+  .footer-left {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .footer-right {
+    grid-column: 1;
+    grid-row: 5;
+    justify-self: start;
+  }
+}
