@@ -232,11 +232,11 @@ monitor.position.set(0, 2.34, -0.82)
 monitor.scale.setScalar(1.14)
 rig.add(monitor)
 
-const monitorBody = new THREE.Mesh(new THREE.BoxGeometry(9.6, 5.8, 0.55), monitorBodyMaterial)
+const monitorBody = new THREE.Mesh(new THREE.BoxGeometry(9.4, 5.6, 0.55), monitorBodyMaterial)
 monitorBody.castShadow = true
 monitor.add(monitorBody)
 
-const bezel = new THREE.Mesh(new THREE.BoxGeometry(8.9, 5.15, 0.14), monitorTrimMaterial)
+const bezel = new THREE.Mesh(new THREE.BoxGeometry(8.85, 5.1, 0.1), monitorTrimMaterial)
 bezel.position.set(0, 0, 0.29)
 bezel.castShadow = true
 monitor.add(bezel)
@@ -270,10 +270,10 @@ screenTexture.colorSpace = THREE.SRGBColorSpace
 screenTexture.minFilter = THREE.LinearFilter
 
 const screen = new THREE.Mesh(
-  new THREE.PlaneGeometry(8.42, 4.73),
+  new THREE.PlaneGeometry(8.7, 4.95),
   new THREE.MeshBasicMaterial({ map: screenTexture, toneMapped: false }),
 )
-screen.position.set(0, 0, 0.48)
+screen.position.set(0, 0, 0.35)
 screen.renderOrder = 2
 monitor.add(screen)
 

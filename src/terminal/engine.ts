@@ -1,4 +1,4 @@
-import { BOOT_SCREEN_LINES, HELP_SCREEN_LINES, TARGET_CONTRACT_ADDRESS } from '../content/screenTemplate'
+import { BOOT_SCREEN_LINES, HELP_SCREEN_LINES, TARGET_CONTRACT_ADDRESS, ARIA_DIALOGUES, FILE_SYSTEM, type FileSystemNode } from '../content/screenTemplate'
 import { BROWSER_PAGES, type BrowserPageId } from './browser'
 
 type FragmentReward = { command: string; output: string }
@@ -68,6 +68,8 @@ export class ScreenEngine {
   private mode: 'terminal' | 'browser' = 'terminal'
   private activeBrowserPage: BrowserPageId = 'home'
   private huntActive = false
+  private currentDir = '/'
+  private ariaInteractions = 0
 
   private getStatusLabel(): string {
     if (this.mode === 'browser') {
@@ -215,12 +217,160 @@ export class ScreenEngine {
     this.appendLog(`> Progress ${this.discoveredFragments.size}/5`)
   }
 
+  private getCurrentNode(): FileSystemNode | null {
+    const parts = this.currentDir.split('/').filter(Boolean)
+    let node = FILE_SYSTEM['/']
+    
+    for (const part of parts) {
+      if (!node.children || !node.children[part]) {
+        return null
+      }
+      node = node.children[part]
+    }
+    
+    return node
+  }
+
+  private resolvePath(path: string): string {
+    if (path.startsWith('/')) {
+      return path
+    }
+    
+    if (path === '..') {
+      const parts = this.currentDir.split('/').filter(Boolean)
+      parts.pop()
+      return '/' + parts.join('/')
+    }
+    
+    if (this.currentDir === '/') {
+      return '/' + path
+    }
+    
+    return this.currentDir + '/' + path
+  }
+
+  private handleAriaCommand(): void {
+    if (this.ariaInteractions === 0) {
+      ARIA_DIALOGUES.first.forEach((line: string) => this.appendLog(line))
+      this.ariaInteractions++
+      return
+    }
+
+    const greetings = ARIA_DIALOGUES.greetings
+    const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)]
+    randomGreeting.forEach((line: string) => this.appendLog(line))
+    
+    if (Math.random() < 0.3) {
+      const hint = ARIA_DIALOGUES.hints[Math.floor(Math.random() * ARIA_DIALOGUES.hints.length)]
+      this.appendLog(hint)
+    }
+    
+    this.ariaInteractions++
+  }
+
   private runTerminalCommand(rawValue: string): void {
     const command = rawValue.trim().toLowerCase()
     this.appendLog(`> ${rawValue}`)
 
     if (command === 'help') {
       this.printHelp()
+      return
+    }
+
+    if (command === 'aria' || command === 'talk') {
+      this.handleAriaCommand()
+      return
+    }
+
+    if (command === 'ls') {
+      const node = this.getCurrentNode()
+      if (!node || node.type !== 'dir') {
+        this.appendLog('> Error: Invalid directory')
+        return
+      }
+
+      this.appendLog(`> ${this.currentDir}`)
+      if (node.children) {
+        Object.entries(node.children).forEach(([name, child]: [string, FileSystemNode]) => {
+          const prefix = child.type === 'dir' ? '[DIR] ' : '[FILE]'
+          const locked = child.locked ? ' [LOCKED]' : ''
+          this.appendLog(`>  ${prefix} ${name}${locked}`)
+        })
+      }
+      return
+    }
+
+    if (command.startsWith('cd ')) {
+      const target = rawValue.slice(3).trim()
+      
+      if (target === '/' || target === '~') {
+        this.currentDir = '/'
+        this.appendLog(`> ${this.currentDir}`)
+        return
+      }
+
+      const newPath = this.resolvePath(target)
+      const parts = newPath.split('/').filter(Boolean)
+      let node = FILE_SYSTEM['/']
+      
+      for (const part of parts) {
+        if (!node.children || !node.children[part]) {
+          this.appendLog('> Error: Directory not found')
+          return
+        }
+        node = node.children[part]
+        if (node.type !== 'dir') {
+          this.appendLog('> Error: Not a directory')
+          return
+        }
+      }
+
+      this.currentDir = newPath || '/'
+      this.appendLog(`> ${this.currentDir}`)
+      return
+    }
+
+    if (command.startsWith('cat ')) {
+      const target = rawValue.slice(4).trim()
+      const filePath = this.resolvePath(target)
+      const parts = filePath.split('/').filter(Boolean)
+      const fileName = parts.pop()
+      
+      let node = FILE_SYSTEM['/']
+      for (const part of parts) {
+        if (!node.children || !node.children[part]) {
+          this.appendLog('> Error: File not found')
+          return
+        }
+        node = node.children[part]
+      }
+
+      if (!fileName || !node.children || !node.children[fileName]) {
+        this.appendLog('> Error: File not found')
+        return
+      }
+
+      const fileNode = node.children[fileName]
+      
+      if (fileNode.type !== 'file') {
+        this.appendLog('> Error: Not a file')
+        return
+      }
+
+      if (fileNode.locked) {
+        this.appendLog('> Error: Access denied')
+        this.appendLog('> ARIA: That file is... restricted.')
+        return
+      }
+
+      if (fileNode.content) {
+        fileNode.content.forEach((line: string) => this.appendLog(`  ${line}`))
+      }
+      return
+    }
+
+    if (command === 'pwd') {
+      this.appendLog(`> ${this.currentDir}`)
       return
     }
 
@@ -295,6 +445,8 @@ export class ScreenEngine {
       this.huntActive = false
       this.discoveredFragments.clear()
       this.completedCommands.clear()
+      this.currentDir = '/'
+      this.ariaInteractions = 0
       return
     }
 
