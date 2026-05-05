@@ -79,6 +79,7 @@ export class ScreenEngine {
   private ariaInteractions = 0
   private scrollOffset = 0
   private readonly maxVisibleLines = 18
+  private tutorialStep = 0 // 0=login, 1=type, 2=commands, 3=done
 
   private getStatusLabel(): string {
     if (this.mode === 'login') {
@@ -178,7 +179,18 @@ export class ScreenEngine {
   handleLogin(): void {
     if (this.mode === 'login') {
       this.mode = 'terminal'
+      if (this.tutorialStep === 0) {
+        this.tutorialStep = 1
+      }
     }
+  }
+
+  getTutorialStep(): number {
+    return this.tutorialStep
+  }
+
+  skipTutorial(): void {
+    this.tutorialStep = 3
   }
 
   insertCharacter(char: string): void {
@@ -186,6 +198,11 @@ export class ScreenEngine {
     if (this.inputBuffer.length >= MAX_INPUT) return
     this.inputBuffer = `${this.inputBuffer.slice(0, this.cursorIndex)}${char}${this.inputBuffer.slice(this.cursorIndex)}`
     this.cursorIndex += char.length
+    
+    // Advance tutorial when user starts typing
+    if (this.tutorialStep === 1) {
+      this.tutorialStep = 2
+    }
   }
 
   moveCursorLeft(): void {
@@ -252,6 +269,11 @@ export class ScreenEngine {
 
     this.commandHistory.push(rawValue)
     this.historyIndex = -1
+    
+    // Advance tutorial after first command
+    if (this.tutorialStep === 2) {
+      this.tutorialStep = 3
+    }
 
     if (this.mode === 'browser') {
       this.runBrowserCommand(rawValue)

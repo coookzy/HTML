@@ -331,3 +331,148 @@ body {
     justify-self: start;
   }
 }
+
+/* Tutorial Overlays */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.tutorial-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tutorial-content {
+  position: absolute;
+  background: rgba(8, 16, 24, 0.92);
+  border: 2px solid rgba(127, 224, 255, 0.5);
+  padding: 1.2rem 1.5rem;
+  border-radius: 4px;
+  pointer-events: auto;
+  animation: tutorialFadeIn 0.5s ease-out;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(127, 224, 255, 0.15);
+}
+
+.tutorial-message {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  line-height: 1.6;
+  max-width: 320px;
+  margin-bottom: 1rem;
+}
+
+.tutorial-skip {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent-warm);
+  background: rgba(244, 191, 121, 0.1);
+  border: 1px solid rgba(244, 191, 121, 0.35);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 2px;
+}
+
+.tutorial-skip:hover {
+  background: rgba(244, 191, 121, 0.2);
+  border-color: var(--accent-warm);
+  transform: translateY(-1px);
+}
+
+.tutorial-pointer {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  animation: tutorialPulse 2s ease-in-out infinite;
+}
+
+/* Positioning classes */
+.tutorial-overlay.step-0 .tutorial-content {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tutorial-overlay.step-0 .tutorial-pointer {
+  top: calc(50% + 80px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 20px 15px 0 15px;
+  border-color: rgba(127, 224, 255, 0.8) transparent transparent transparent;
+  filter: drop-shadow(0 0 8px rgba(127, 224, 255, 0.5));
+}
+
+.tutorial-overlay.step-1 .tutorial-content {
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.tutorial-overlay.step-1 .tutorial-pointer {
+  top: calc(45% + 100px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 20px 15px 0 15px;
+  border-color: rgba(127, 224, 255, 0.8) transparent transparent transparent;
+  filter: drop-shadow(0 0 8px rgba(127, 224, 255, 0.5));
+}
+
+.tutorial-overlay.step-2 .tutorial-content {
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tutorial-overlay.step-2 .tutorial-pointer {
+  display: none; /* No pointer needed for general command hint */
+}
+
+@keyframes tutorialFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tutorialPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1) translateX(-50%);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) translateX(-50%);
+  }
+}
+
+@media (max-width: 768px) {
+  .tutorial-content {
+    max-width: 85%;
+    padding: 1rem 1.2rem;
+  }
+  
+  .tutorial-message {
+    font-size: 0.75rem;
+    max-width: 100%;
+  }
+  
+  .tutorial-overlay.step-0 .tutorial-content,
+  .tutorial-overlay.step-1 .tutorial-content,
+  .tutorial-overlay.step-2 .tutorial-content {
+    left: 50%;
+  }
+}

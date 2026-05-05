@@ -72,6 +72,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </div>
   <div class="controls">TYPE COMMANDS ON CRT | MOVE + CLICK TO DRIVE MOUSE</div>
 </div>
+<div id="tutorial-overlay" class="tutorial-overlay hidden">
+  <div class="tutorial-content">
+    <div class="tutorial-message"></div>
+    <button class="tutorial-skip">SKIP TUTORIAL</button>
+  </div>
+  <div class="tutorial-pointer"></div>
+</div>
 `
 
 // Loading tracking
@@ -688,6 +695,37 @@ rig.add(mouseCable)
 
 const screenEngine = new ScreenEngine()
 
+// Tutorial management
+const tutorialOverlay = document.getElementById('tutorial-overlay') as HTMLDivElement
+const tutorialMessage = document.querySelector('.tutorial-message') as HTMLDivElement
+const tutorialSkip = document.querySelector('.tutorial-skip') as HTMLButtonElement
+
+const tutorialMessages = [
+  'Welcome! Press ENTER on the keyboard below to login.',
+  'Type commands on your keyboard or click keys on the 3D keyboard. Try typing help!',
+  'Great! Now press ENTER to run your command. Try "help" to see available commands.',
+]
+
+function updateTutorial(): void {
+  const step = screenEngine.getTutorialStep()
+  
+  if (step >= 3 || step < 0) {
+    tutorialOverlay.classList.add('hidden')
+    return
+  }
+  
+  tutorialOverlay.className = 'tutorial-overlay step-' + step
+  tutorialMessage.textContent = tutorialMessages[step]
+  tutorialOverlay.classList.remove('hidden')
+}
+
+if (tutorialSkip) {
+  tutorialSkip.addEventListener('click', () => {
+    screenEngine.skipTutorial()
+    updateTutorial()
+  })
+}
+
 let cursorOn = true
 let mouseDown = false
 let wheelTarget = 0
@@ -832,6 +870,7 @@ function drawScreen(): void {
   ctx.fill()
 
   screenTexture.needsUpdate = true
+  updateTutorial()
 }
 
 // Music volume slider
@@ -880,6 +919,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'ArrowLeft') {
     event.preventDefault()
+    playKeySound()
     screenEngine.moveCursorLeft()
     drawScreen()
     return
@@ -887,6 +927,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'ArrowRight') {
     event.preventDefault()
+    playKeySound()
     screenEngine.moveCursorRight()
     drawScreen()
     return
@@ -894,6 +935,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'ArrowUp') {
     event.preventDefault()
+    playKeySound()
     // If Shift is held, scroll content up instead of history
     if (event.shiftKey) {
       screenEngine.scrollUp()
@@ -906,6 +948,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'ArrowDown') {
     event.preventDefault()
+    playKeySound()
     // If Shift is held, scroll content down instead of history
     if (event.shiftKey) {
       screenEngine.scrollDown()
@@ -918,6 +961,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'PageUp') {
     event.preventDefault()
+    playKeySound()
     screenEngine.scrollPageUp()
     drawScreen()
     return
@@ -925,6 +969,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'PageDown') {
     event.preventDefault()
+    playKeySound()
     screenEngine.scrollPageDown()
     drawScreen()
     return
@@ -932,6 +977,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'Home') {
     event.preventDefault()
+    playKeySound()
     screenEngine.moveCursorHome()
     drawScreen()
     return
@@ -939,6 +985,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'End') {
     event.preventDefault()
+    playKeySound()
     screenEngine.moveCursorEnd()
     drawScreen()
     return
