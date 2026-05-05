@@ -66,7 +66,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <img src="${moonsysLogo}" alt="MoonSys Logo" class="logo" />
     <p class="tagline">An abandoned lunar research station terminal. Type <span class="cmd">help</span> for commands or <span class="cmd">aria</span> to talk to the AI. Explore the file system to uncover what happened 847 days ago.</p>
     <div class="music-control">
-      <label for="music-volume" class="music-label">🔊 VOLUME</label>
+      <label for="music-volume" class="music-label">MUSIC VOLUME</label>
       <input type="range" id="music-volume" class="music-slider" min="0" max="100" value="30" />
     </div>
   </div>
