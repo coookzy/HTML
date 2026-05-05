@@ -766,6 +766,49 @@ function drawScreen(): void {
       const metrics = ctx.measureText(beforeCursor)
       ctx.fillRect(browserX + 16 + metrics.width, browserY + browserH - 31, 10, 16)
     }
+  } else if (view.mode === 'login') {
+    // Login screen rendering
+    const centerX = width / 2
+    const centerY = height / 2
+
+    // Title
+    ctx.font = '32px "Courier New", monospace'
+    ctx.fillStyle = '#7fe0ff'
+    ctx.textAlign = 'center'
+    ctx.fillText('MOONSYS LOGIN', centerX, centerY - 100)
+
+    // User profile box
+    const boxW = 320
+    const boxH = 120
+    const boxX = centerX - boxW / 2
+    const boxY = centerY - 40
+
+    // Box background
+    ctx.fillStyle = 'rgba(127, 224, 255, 0.08)'
+    ctx.fillRect(boxX, boxY, boxW, boxH)
+
+    // Box border with glow effect
+    ctx.strokeStyle = cursorOn ? 'rgba(127, 224, 255, 0.9)' : 'rgba(127, 224, 255, 0.5)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(boxX, boxY, boxW, boxH)
+
+    // User icon (simple circle)
+    ctx.beginPath()
+    ctx.arc(centerX, boxY + 45, 18, 0, Math.PI * 2)
+    ctx.fillStyle = '#7fe0ff'
+    ctx.fill()
+
+    // Username
+    ctx.font = '24px "Courier New", monospace'
+    ctx.fillStyle = '#e8f4ff'
+    ctx.fillText('Admin', centerX, boxY + 90)
+
+    // Instruction text
+    ctx.font = '16px "Courier New", monospace'
+    ctx.fillStyle = '#7fd3ff'
+    ctx.fillText('Press ENTER to login', centerX, centerY + 120)
+
+    ctx.textAlign = 'left'
   } else {
     const visible = [...view.lines, view.prompt]
     const textStartY = safeY + 72
@@ -918,7 +961,12 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     if (event.repeat) return
     playKeySound()
-    screenEngine.submit()
+    const view = screenEngine.getViewModel()
+    if (view.mode === 'login') {
+      screenEngine.handleLogin()
+    } else {
+      screenEngine.submit()
+    }
     drawScreen()
     return
   }

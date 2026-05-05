@@ -24,7 +24,13 @@ type BrowserView = {
   cursorIndex: number
 }
 
-export type ScreenViewModel = TerminalView | BrowserView
+type LoginView = {
+  mode: 'login'
+  title: string
+  statusLabel: string
+}
+
+export type ScreenViewModel = TerminalView | BrowserView | LoginView
 
 const TARGET_FRAGMENTS = ['testUYjKk', 'vy2hyqC744', '4mU6eXFD3', 'ETZW4tLd6', 'Dapump']
 const FRAGMENT_REWARDS: FragmentReward[] = [
@@ -66,7 +72,7 @@ export class ScreenEngine {
   private readonly discoveredFragments = new Set<string>()
   private readonly completedCommands = new Set<string>()
   private readonly commandHistory: string[] = []
-  private mode: 'terminal' | 'browser' = 'terminal'
+  private mode: 'login' | 'terminal' | 'browser' = 'login'
   private activeBrowserPage: BrowserPageId = 'home'
   private huntActive = false
   private currentDir = '/'
@@ -75,6 +81,9 @@ export class ScreenEngine {
   private readonly maxVisibleLines = 18
 
   private getStatusLabel(): string {
+    if (this.mode === 'login') {
+      return 'LOGIN'
+    }
     if (this.mode === 'browser') {
       return this.huntActive ? `CA HUNT ${this.discoveredFragments.size}/5` : 'BROWSER ONLINE'
     }
@@ -92,6 +101,14 @@ export class ScreenEngine {
 
   getViewModel(): ScreenViewModel {
     const prompt = `> ${this.inputBuffer}`
+
+    if (this.mode === 'login') {
+      return {
+        mode: 'login',
+        title: 'C:/MOONSYS/LOOP/login.sys',
+        statusLabel: this.getStatusLabel(),
+      }
+    }
 
     if (this.mode === 'browser') {
       const page = BROWSER_PAGES[this.activeBrowserPage]
@@ -152,7 +169,14 @@ export class ScreenEngine {
     this.scrollOffset = maxOffset
   }
 
+  handleLogin(): void {
+    if (this.mode === 'login') {
+      this.mode = 'terminal'
+    }
+  }
+
   insertCharacter(char: string): void {
+    if (this.mode === 'login') return // No input on login screen
     if (this.inputBuffer.length >= MAX_INPUT) return
     this.inputBuffer = `${this.inputBuffer.slice(0, this.cursorIndex)}${char}${this.inputBuffer.slice(this.cursorIndex)}`
     this.cursorIndex += char.length
