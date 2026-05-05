@@ -26,7 +26,7 @@ type BrowserView = {
 
 export type ScreenViewModel = TerminalView | BrowserView
 
-const TARGET_FRAGMENTS = ['testUYjKk', 'vy2hyqC744', '4mU6eXFD3', 'ETZW4tLd6', 'Dapump']
+const TARGET_FRAGMENTS = ['HSqrS8Zeu', 'pMD5A4hsK', 'mJxYB37i9', '3pfXwwGxC', 'kQmrpump']
 const FRAGMENT_REWARDS: FragmentReward[] = [
   { command: 'scan', output: 'Network sweep complete. Fragment recovered.' },
   { command: 'probe moon', output: 'Moon relay handshake accepted. Fragment recovered.' },
