@@ -143,28 +143,34 @@ export class ScreenEngine {
   }
 
   scrollUp(): void {
+    if (this.mode === 'login') return
     const maxOffset = Math.max(0, this.lines.length - this.maxVisibleLines)
     this.scrollOffset = Math.min(this.scrollOffset + 1, maxOffset)
   }
 
   scrollDown(): void {
+    if (this.mode === 'login') return
     this.scrollOffset = Math.max(0, this.scrollOffset - 1)
   }
 
   scrollPageUp(): void {
+    if (this.mode === 'login') return
     const maxOffset = Math.max(0, this.lines.length - this.maxVisibleLines)
     this.scrollOffset = Math.min(this.scrollOffset + this.maxVisibleLines, maxOffset)
   }
 
   scrollPageDown(): void {
+    if (this.mode === 'login') return
     this.scrollOffset = Math.max(0, this.scrollOffset - this.maxVisibleLines)
   }
 
   scrollToBottom(): void {
+    if (this.mode === 'login') return
     this.scrollOffset = 0
   }
 
   scrollToTop(): void {
+    if (this.mode === 'login') return
     const maxOffset = Math.max(0, this.lines.length - this.maxVisibleLines)
     this.scrollOffset = maxOffset
   }
@@ -183,22 +189,27 @@ export class ScreenEngine {
   }
 
   moveCursorLeft(): void {
+    if (this.mode === 'login') return
     this.cursorIndex = Math.max(0, this.cursorIndex - 1)
   }
 
   moveCursorRight(): void {
+    if (this.mode === 'login') return
     this.cursorIndex = Math.min(this.inputBuffer.length, this.cursorIndex + 1)
   }
 
   moveCursorHome(): void {
+    if (this.mode === 'login') return
     this.cursorIndex = 0
   }
 
   moveCursorEnd(): void {
+    if (this.mode === 'login') return
     this.cursorIndex = this.inputBuffer.length
   }
 
   historyPrev(): void {
+    if (this.mode === 'login') return
     if (!this.commandHistory.length) return
     this.historyIndex = this.historyIndex < this.commandHistory.length - 1 ? this.historyIndex + 1 : this.historyIndex
     this.inputBuffer = this.commandHistory[this.commandHistory.length - 1 - this.historyIndex]
@@ -206,6 +217,7 @@ export class ScreenEngine {
   }
 
   historyNext(): void {
+    if (this.mode === 'login') return
     if (this.historyIndex <= 0) {
       this.historyIndex = -1
       this.inputBuffer = ''
@@ -217,16 +229,19 @@ export class ScreenEngine {
   }
 
   backspace(): void {
+    if (this.mode === 'login') return
     if (this.cursorIndex === 0) return
     this.inputBuffer = `${this.inputBuffer.slice(0, this.cursorIndex - 1)}${this.inputBuffer.slice(this.cursorIndex)}`
     this.cursorIndex -= 1
   }
 
   delete(): void {
+    if (this.mode === 'login') return
     this.inputBuffer = `${this.inputBuffer.slice(0, this.cursorIndex)}${this.inputBuffer.slice(this.cursorIndex + 1)}`
   }
 
   submit(): void {
+    if (this.mode === 'login') return
     const rawValue = this.inputBuffer
     this.inputBuffer = ''
     this.cursorIndex = 0

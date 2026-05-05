@@ -1034,7 +1034,12 @@ window.addEventListener('pointerdown', (event) => {
         let char = ''
 
         if (code === 'Enter') {
-          screenEngine.submit()
+          const view = screenEngine.getViewModel()
+          if (view.mode === 'login') {
+            screenEngine.handleLogin()
+          } else {
+            screenEngine.submit()
+          }
         } else if (code === 'Backspace') {
           screenEngine.backspace()
         } else if (code === 'Delete') {
