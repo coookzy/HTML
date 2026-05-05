@@ -698,8 +698,8 @@ let pointerY = 0
 function drawScreen(): void {
   const ctx = crtContext
   const { width, height } = screenCanvas
-  const safeX = 52
-  const safeY = 42
+  const safeX = 24
+  const safeY = 24
   const safeW = width - safeX * 2
   const safeH = height - safeY * 2
 
@@ -715,7 +715,7 @@ function drawScreen(): void {
     ctx.fillRect(0, y, width, 2)
   }
 
-  ctx.fillStyle = 'rgba(9, 23, 35, 0.8)'
+  ctx.fillStyle = 'rgba(8, 16, 24, 0.98)'
   ctx.fillRect(safeX, safeY, safeW, safeH)
 
   const view = screenEngine.getViewModel()
@@ -768,18 +768,18 @@ function drawScreen(): void {
     }
   } else {
     const visible = [...view.lines, view.prompt]
-    const textStartY = safeY + 76
-    const lineHeight = 26
-    ctx.font = '17px "Consolas", "Cascadia Code", "Courier New", monospace'
-    ctx.fillStyle = '#d7f9ff'
+    const textStartY = safeY + 72
+    const lineHeight = 30
+    ctx.font = '19px "Consolas", "Cascadia Code", "Courier New", monospace'
+    ctx.fillStyle = '#e8f4ff'
     visible.forEach((line, i) => {
-      ctx.fillText(line, safeX + 24, textStartY + i * lineHeight)
+      ctx.fillText(line, safeX + 20, textStartY + i * lineHeight)
     })
 
     if (cursorOn) {
       const beforeCursor = `> ${view.prompt.slice(2, 2 + view.cursorIndex)}`
       const metrics = ctx.measureText(beforeCursor)
-      ctx.fillRect(safeX + 26 + metrics.width, textStartY - 20 + (visible.length - 1) * lineHeight, 12, 18)
+      ctx.fillRect(safeX + 22 + metrics.width, textStartY - 22 + (visible.length - 1) * lineHeight, 13, 20)
     }
   }
 
@@ -851,14 +851,38 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === 'ArrowUp') {
     event.preventDefault()
-    screenEngine.historyPrev()
+    // If Shift is held, scroll content up instead of history
+    if (event.shiftKey) {
+      screenEngine.scrollUp()
+    } else {
+      screenEngine.historyPrev()
+    }
     drawScreen()
     return
   }
 
   if (event.key === 'ArrowDown') {
     event.preventDefault()
-    screenEngine.historyNext()
+    // If Shift is held, scroll content down instead of history
+    if (event.shiftKey) {
+      screenEngine.scrollDown()
+    } else {
+      screenEngine.historyNext()
+    }
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'PageUp') {
+    event.preventDefault()
+    screenEngine.scrollPageUp()
+    drawScreen()
+    return
+  }
+
+  if (event.key === 'PageDown') {
+    event.preventDefault()
+    screenEngine.scrollPageDown()
     drawScreen()
     return
   }
@@ -913,6 +937,18 @@ window.addEventListener('keyup', (event) => {
     k.userData.press = 0
   })
 })
+
+window.addEventListener('wheel', (event) => {
+  event.preventDefault()
+  if (event.deltaY < 0) {
+    // Scroll up (show older content)
+    screenEngine.scrollUp()
+  } else {
+    // Scroll down (show newer content)
+    screenEngine.scrollDown()
+  }
+  drawScreen()
+}, { passive: false })
 
 window.addEventListener('pointermove', (event) => {
   pointerX = event.clientX / window.innerWidth - 0.5

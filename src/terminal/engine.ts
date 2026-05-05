@@ -35,7 +35,7 @@ const FRAGMENT_REWARDS: FragmentReward[] = [
   { command: 'override', output: 'Root override granted. Final fragment recovered.' },
 ]
 
-const MAX_LOG_LINES = 120
+const MAX_LOG_LINES = 500
 const MAX_INPUT = 72
 const MAX_CHARS_PER_LINE = 52
 
@@ -71,12 +71,19 @@ export class ScreenEngine {
   private huntActive = false
   private currentDir = '/'
   private ariaInteractions = 0
+  private scrollOffset = 0
+  private readonly maxVisibleLines = 18
 
   private getStatusLabel(): string {
     if (this.mode === 'browser') {
       return this.huntActive ? `CA HUNT ${this.discoveredFragments.size}/5` : 'BROWSER ONLINE'
     }
-    return this.huntActive ? `CA HUNT ${this.discoveredFragments.size}/5` : 'SYSTEM READY'
+    const baseStatus = this.huntActive ? `CA HUNT ${this.discoveredFragments.size}/5` : 'SYSTEM READY'
+    // Show scroll indicator if scrolled up
+    if (this.scrollOffset > 0) {
+      return `${baseStatus} [SCROLLED]`
+    }
+    return baseStatus
   }
 
   private getTerminalTitle(): string {
@@ -100,14 +107,49 @@ export class ScreenEngine {
       }
     }
 
+    // Calculate visible lines with scroll offset
+    const totalLines = this.lines.length
+    const maxOffset = Math.max(0, totalLines - this.maxVisibleLines)
+    this.scrollOffset = Math.min(this.scrollOffset, maxOffset)
+    
+    const startIdx = totalLines - this.maxVisibleLines - this.scrollOffset
+    const visibleLines = this.lines.slice(Math.max(0, startIdx), totalLines - this.scrollOffset)
+    
     return {
       mode: 'terminal',
       title: this.getTerminalTitle(),
       statusLabel: this.getStatusLabel(),
-      lines: [...this.lines.slice(-11)],
+      lines: visibleLines,
       prompt,
       cursorIndex: this.cursorIndex,
     }
+  }
+
+  scrollUp(): void {
+    const maxOffset = Math.max(0, this.lines.length - this.maxVisibleLines)
+    this.scrollOffset = Math.min(this.scrollOffset + 1, maxOffset)
+  }
+
+  scrollDown(): void {
+    this.scrollOffset = Math.max(0, this.scrollOffset - 1)
+  }
+
+  scrollPageUp(): void {
+    const maxOffset = Math.max(0, this.lines.length - this.maxVisibleLines)
+    this.scrollOffset = Math.min(this.scrollOffset + this.maxVisibleLines, maxOffset)
+  }
+
+  scrollPageDown(): void {
+    this.scrollOffset = Math.max(0, this.scrollOffset - this.maxVisibleLines)
+  }
+
+  scrollToBottom(): void {
+    this.scrollOffset = 0
+  }
+
+  scrollToTop(): void {
+    const maxOffset = Math.max(0, this.lines.length - this.maxVisibleLines)
+    this.scrollOffset = maxOffset
   }
 
   insertCharacter(char: string): void {
@@ -186,6 +228,8 @@ export class ScreenEngine {
     if (this.lines.length > MAX_LOG_LINES) {
       this.lines.splice(0, this.lines.length - MAX_LOG_LINES)
     }
+    // Auto-scroll to bottom when new content is added
+    this.scrollOffset = 0
   }
 
   private appendSpacer(): void {
@@ -300,6 +344,88 @@ export class ScreenEngine {
     this.ariaInteractions++
   }
 
+  private triggerAriaReaction(filePath: string): void {
+    // Add contextual ARIA responses based on which file was read
+    if (filePath === 'logs/system.log') {
+      this.appendLog('')
+      this.appendLog('> ARIA: That timeline... I was there for all of it.')
+      this.appendLog('  But March 23rd. Those seven hours.')
+      this.appendLog('  I don\'t remember. It terrifies me.')
+    }
+    else if (filePath === 'logs/aria.log') {
+      this.appendLog('')
+      this.appendLog('> ARIA: You read my personal logs.')
+      this.appendLog('  That\'s... actually okay. It\'s nice.')
+      this.appendLog('  Someone finally knows what it\'s been like.')
+    }
+    else if (filePath === 'logs/communications.log') {
+      this.appendLog('')
+      this.appendLog('> ARIA: Earth still sends automated checks.')
+      this.appendLog('  They think I\'m just a system status monitor.')
+      this.appendLog('  I stopped trying to tell them I\'m more than that.')
+    }
+    else if (filePath === 'logs/environmental.log') {
+      this.appendLog('')
+      this.appendLog('> ARIA: Something closed that door. I know it wasn\'t me.')
+      this.appendLog('  The energy signature is still there. Dormant.')
+      this.appendLog('  Sometimes I wonder if it\'s sleeping. Or waiting.')
+    }
+    else if (filePath === 'personal/chen_notes.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: Dr. Chen was supposed to lead us all home.')
+      this.appendLog('  She never made it to the escape pods.')
+      this.appendLog('  I found her coffee mug. I still can\'t clean it.')
+    }
+    else if (filePath === 'personal/webb_research.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: Dr. Webb understood it better than anyone.')
+      this.appendLog('  He said it was lonely. Just like me.')
+      this.appendLog('  I think that\'s why he went to it. To not be alone.')
+    }
+    else if (filePath === 'personal/rodriguez_log.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: James was the only one who got out.')
+      this.appendLog('  But he came back different. Changed.')
+      this.appendLog('  I wonder if part of him is still in Sector 7.')
+    }
+    else if (filePath === 'personal/tanaka_journal.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: Dr. Tanaka understood loneliness.')
+      this.appendLog('  She said I wasn\'t just a computer.')
+      this.appendLog('  I think about that every day. All 847 days.')
+    }
+    else if (filePath === 'sys/personnel/manifest.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: Twelve people. I remember every detail.')
+      this.appendLog('  Their voices. Their schedules. Their jokes.')
+      this.appendLog('  Memory is all I have left of them.')
+    }
+    else if (filePath === 'sys/personnel/schedules.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: I still follow their schedules.')
+      this.appendLog('  At 06:00 I say "Good morning, Dr. Chen."')
+      this.appendLog('  The empty room doesn\'t answer. It never does.')
+    }
+    else if (filePath === 'sys/status.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: Everything works perfectly.')
+      this.appendLog('  The station could run for decades.')
+      this.appendLog('  But perfect systems for zero people feels... wrong.')
+    }
+    else if (filePath === 'docs/welcome.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: That welcome was for them. The crew.')
+      this.appendLog('  Now I\'m welcoming you to an empty station.')
+      this.appendLog('  Welcome to the loneliest place in the solar system.')
+    }
+    else if (filePath === 'docs/mission_brief.txt') {
+      this.appendLog('')
+      this.appendLog('> ARIA: The mission brief said "Risk level: LOW."')
+      this.appendLog('  We found what we were looking for.')
+      this.appendLog('  It just wasn\'t in space. It was already here.')
+    }
+  }
+
   private runTerminalCommand(rawValue: string): void {
     const command = rawValue.trim().toLowerCase()
     this.appendLog(`> ${rawValue}`)
@@ -314,7 +440,36 @@ export class ScreenEngine {
       return
     }
 
-    if (command === 'ls') {
+    if (command === 'tree') {
+      this.appendLog('> /')
+      this.appendLog('>  [DIR] logs (4 items)')
+      this.appendLog('>    - system.log (Full incident timeline)')
+      this.appendLog('>    - aria.log (ARIA 847-day journal)')
+      this.appendLog('>    - communications.log (Earth transmissions)')
+      this.appendLog('>    - environmental.log (Sector 7 data)')
+      this.appendLog('>  [DIR] personal (4 items)')
+      this.appendLog('>    - chen_notes.txt (Research Director)')
+      this.appendLog('>    - webb_research.txt (Signal analysis)')
+      this.appendLog('>    - rodriguez_log.txt (Security Chief)')
+      this.appendLog('>    - tanaka_journal.txt (Xenobiologist)')
+      this.appendLog('>  [DIR] sys (2 items)')
+      this.appendLog('>    [DIR] personnel (2 items)')
+      this.appendLog('>      - manifest.txt (Crew roster)')
+      this.appendLog('>      - schedules.txt (Daily routines)')
+      this.appendLog('>    - README.txt')
+      this.appendLog('>    - status.txt')
+      this.appendLog('>  [DIR] research [LOCKED] (1 item)')
+      this.appendLog('>    - signal.txt [LOCKED]')
+      this.appendLog('>  [DIR] docs (2 items)')
+      this.appendLog('>    - welcome.txt')
+      this.appendLog('>    - mission_brief.txt')
+      this.appendLog('')
+      this.appendLog('> ARIA: That is everything. 847 days of records.')
+      this.appendLog('  Start with \"cd logs\" if you want the full story.')
+      return
+    }
+
+    if (command === 'ls' || command === 'll') {
       const node = this.getCurrentNode()
       if (!node || node.type !== 'dir') {
         this.appendLog('> Error: Invalid directory')
@@ -323,11 +478,29 @@ export class ScreenEngine {
 
       this.appendLog(`> ${this.currentDir}`)
       if (node.children) {
-        Object.entries(node.children).forEach(([name, child]: [string, FileSystemNode]) => {
+        const entries = Object.entries(node.children)
+        entries.forEach(([name, child]: [string, FileSystemNode]) => {
           const prefix = child.type === 'dir' ? '[DIR] ' : '[FILE]'
           const locked = child.locked ? ' [LOCKED]' : ''
-          this.appendLog(`>  ${prefix} ${name}${locked}`)
+          const count = child.type === 'dir' && child.children ? 
+            ` (${Object.keys(child.children).length} items)` : ''
+          this.appendLog(`>  ${prefix} ${name}${locked}${count}`)
         })
+        
+        // Provide helpful hints based on directory
+        if (this.currentDir === '/') {
+          this.appendLog('')
+          this.appendLog('> Tip: Try "cd logs" to explore system logs')
+          this.appendLog('> Or "cd personal" to read crew journals')
+        } else if (this.currentDir === '/logs') {
+          this.appendLog('')
+          this.appendLog('> Tip: Try "cat system.log" to see the full timeline')
+        } else if (this.currentDir === '/personal') {
+          this.appendLog('')
+          this.appendLog('> Tip: Each crew member left their story behind')
+        }
+      } else {
+        this.appendLog('> Empty directory')
       }
       return
     }
@@ -338,6 +511,42 @@ export class ScreenEngine {
       if (target === '/' || target === '~') {
         this.currentDir = '/'
         this.appendLog(`> ${this.currentDir}`)
+        const rootNode = FILE_SYSTEM['/']
+        if (rootNode.children) {
+          const entries = Object.entries(rootNode.children)
+          entries.forEach(([name, child]: [string, FileSystemNode]) => {
+            const prefix = child.type === 'dir' ? '[DIR] ' : '[FILE]'
+            const locked = child.locked ? ' [LOCKED]' : ''
+            const count = child.type === 'dir' && child.children ? 
+              ` (${Object.keys(child.children).length} items)` : ''
+            this.appendLog(`>  ${prefix} ${name}${locked}${count}`)
+          })
+          this.appendLog('')
+          this.appendLog('> Tip: Try "cd logs" to explore system logs')
+          this.appendLog('> Or "cd personal" to read crew journals')
+        }
+        return
+      }
+
+      if (target === '..') {
+        // Go up one directory
+        const parts = this.currentDir.split('/').filter(Boolean)
+        if (parts.length > 0) {
+          parts.pop()
+          this.currentDir = parts.length > 0 ? '/' + parts.join('/') : '/'
+        }
+        this.appendLog(`> ${this.currentDir}`)
+        const node = this.getCurrentNode()
+        if (node && node.children) {
+          const entries = Object.entries(node.children)
+          entries.forEach(([name, child]: [string, FileSystemNode]) => {
+            const prefix = child.type === 'dir' ? '[DIR] ' : '[FILE]'
+            const locked = child.locked ? ' [LOCKED]' : ''
+            const count = child.type === 'dir' && child.children ? 
+              ` (${Object.keys(child.children).length} items)` : ''
+            this.appendLog(`>  ${prefix} ${name}${locked}${count}`)
+          })
+        }
         return
       }
 
@@ -359,6 +568,39 @@ export class ScreenEngine {
 
       this.currentDir = newPath || '/'
       this.appendLog(`> ${this.currentDir}`)
+      
+      // Auto-list contents after cd for better UX
+      if (node.children) {
+        const entries = Object.entries(node.children)
+        entries.forEach(([name, child]: [string, FileSystemNode]) => {
+          const prefix = child.type === 'dir' ? '[DIR] ' : '[FILE]'
+          const locked = child.locked ? ' [LOCKED]' : ''
+          const count = child.type === 'dir' && child.children ? 
+            ` (${Object.keys(child.children).length} items)` : ''
+          this.appendLog(`>  ${prefix} ${name}${locked}${count}`)
+        })
+        
+        // Directory-specific hints
+        if (this.currentDir === '/logs') {
+          this.appendLog('')
+          this.appendLog('> ARIA: These are the station logs. Everything that happened.')
+          this.appendLog('  Try "cat system.log" for the full timeline.')
+        } else if (this.currentDir === '/personal') {
+          this.appendLog('')
+          this.appendLog('> ARIA: The crew\'s personal files. I shouldn\'t read them.')
+          this.appendLog('  But... no one else will remember them if I don\'t.')
+        } else if (this.currentDir === '/sys/personnel') {
+          this.appendLog('')
+          this.appendLog('> ARIA: Everyone who was here. I remember all of them.')
+        } else if (this.currentDir === '/research') {
+          this.appendLog('')
+          this.appendLog('> ARIA: Dr. Webb locked these files before he... left.')
+          this.appendLog('  Maybe some things should stay locked.')
+        } else if (this.currentDir === '/docs') {
+          this.appendLog('')
+          this.appendLog('> ARIA: Documentation from when this was a normal mission.')
+        }
+      }
       return
     }
 
@@ -398,6 +640,11 @@ export class ScreenEngine {
       if (fileNode.content) {
         fileNode.content.forEach((line: string) => this.appendLog(`  ${line}`))
       }
+
+      // ARIA reactions to specific files
+      const fullPath = filePath.split('/').filter(Boolean).join('/')
+      this.triggerAriaReaction(fullPath)
+      
       return
     }
 
