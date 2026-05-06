@@ -11,6 +11,7 @@ type TerminalView = {
   lines: string[]
   prompt: string
   cursorIndex: number
+  tutorialStep: number | null
 }
 
 type BrowserView = {
@@ -22,12 +23,14 @@ type BrowserView = {
   windowLines: string[]
   prompt: string
   cursorIndex: number
+  tutorialStep: number | null
 }
 
 type LoginView = {
   mode: 'login'
   title: string
   statusLabel: string
+  tutorialStep: number | null
 }
 
 export type ScreenViewModel = TerminalView | BrowserView | LoginView
@@ -79,7 +82,7 @@ export class ScreenEngine {
   private ariaInteractions = 0
   private scrollOffset = 0
   private readonly maxVisibleLines = 18
-  private tutorialStep = 0 // 0=login, 1=type, 2=commands, 3=done
+  private tutorialStep: number | null = 0  // 0=login, 1=help, 2=clear, 3=goodbye, null=done
 
   private getStatusLabel(): string {
     if (this.mode === 'login') {
@@ -108,6 +111,7 @@ export class ScreenEngine {
         mode: 'login',
         title: 'C:/MOONSYS/LOOP/login.sys',
         statusLabel: this.getStatusLabel(),
+        tutorialStep: this.tutorialStep,
       }
     }
 
@@ -122,6 +126,7 @@ export class ScreenEngine {
         windowLines: page.lines,
         prompt,
         cursorIndex: this.cursorIndex,
+        tutorialStep: this.tutorialStep,
       }
     }
 
@@ -140,6 +145,7 @@ export class ScreenEngine {
       lines: visibleLines,
       prompt,
       cursorIndex: this.cursorIndex,
+      tutorialStep: this.tutorialStep,
     }
   }
 
@@ -179,18 +185,19 @@ export class ScreenEngine {
   handleLogin(): void {
     if (this.mode === 'login') {
       this.mode = 'terminal'
+      // Advance from step 0 (login) to step 1 (help command)
       if (this.tutorialStep === 0) {
         this.tutorialStep = 1
       }
     }
   }
 
-  getTutorialStep(): number {
-    return this.tutorialStep
+  skipTutorial(): void {
+    this.tutorialStep = null
   }
 
-  skipTutorial(): void {
-    this.tutorialStep = 3
+  getTutorialStep(): number | null {
+    return this.tutorialStep
   }
 
   insertCharacter(char: string): void {
@@ -198,11 +205,6 @@ export class ScreenEngine {
     if (this.inputBuffer.length >= MAX_INPUT) return
     this.inputBuffer = `${this.inputBuffer.slice(0, this.cursorIndex)}${char}${this.inputBuffer.slice(this.cursorIndex)}`
     this.cursorIndex += char.length
-    
-    // Advance tutorial when user starts typing
-    if (this.tutorialStep === 1) {
-      this.tutorialStep = 2
-    }
   }
 
   moveCursorLeft(): void {
@@ -269,11 +271,6 @@ export class ScreenEngine {
 
     this.commandHistory.push(rawValue)
     this.historyIndex = -1
-    
-    // Advance tutorial after first command
-    if (this.tutorialStep === 2) {
-      this.tutorialStep = 3
-    }
 
     if (this.mode === 'browser') {
       this.runBrowserCommand(rawValue)
@@ -493,6 +490,10 @@ export class ScreenEngine {
 
     if (command === 'help') {
       this.printHelp()
+      // Advance from step 1 (help) to step 2 (clear)
+      if (this.tutorialStep === 1) {
+        this.tutorialStep = 2
+      }
       return
     }
 
@@ -787,6 +788,10 @@ export class ScreenEngine {
       this.completedCommands.clear()
       this.currentDir = '/'
       this.ariaInteractions = 0
+      // Advance from step 2 (clear) to step 3 (goodbye)
+      if (this.tutorialStep === 2) {
+        this.tutorialStep = 3
+      }
       return
     }
 

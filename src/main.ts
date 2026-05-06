@@ -61,6 +61,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 <canvas id="scene" aria-label="Interactive retro computer scene"></canvas>
 <div class="vignette"></div>
 <div class="grain"></div>
+<div id="tutorial-overlay" style="display: none;"></div>
 <div class="hud">
   <div class="brand">
     <img src="${moonsysLogo}" alt="MoonSys Logo" class="logo" />
@@ -71,13 +72,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     </div>
   </div>
   <div class="controls">TYPE COMMANDS ON CRT | MOVE + CLICK TO DRIVE MOUSE</div>
-</div>
-<div id="tutorial-overlay" class="tutorial-overlay hidden">
-  <div class="tutorial-content">
-    <div class="tutorial-message"></div>
-    <button class="tutorial-skip">SKIP TUTORIAL</button>
-  </div>
-  <div class="tutorial-pointer"></div>
 </div>
 `
 
@@ -695,37 +689,6 @@ rig.add(mouseCable)
 
 const screenEngine = new ScreenEngine()
 
-// Tutorial management
-const tutorialOverlay = document.getElementById('tutorial-overlay') as HTMLDivElement
-const tutorialMessage = document.querySelector('.tutorial-message') as HTMLDivElement
-const tutorialSkip = document.querySelector('.tutorial-skip') as HTMLButtonElement
-
-const tutorialMessages = [
-  'Welcome! Press ENTER on the keyboard below to login.',
-  'Type commands on your keyboard or click keys on the 3D keyboard. Try typing help!',
-  'Great! Now press ENTER to run your command. Try "help" to see available commands.',
-]
-
-function updateTutorial(): void {
-  const step = screenEngine.getTutorialStep()
-  
-  if (step >= 3 || step < 0) {
-    tutorialOverlay.classList.add('hidden')
-    return
-  }
-  
-  tutorialOverlay.className = 'tutorial-overlay step-' + step
-  tutorialMessage.textContent = tutorialMessages[step]
-  tutorialOverlay.classList.remove('hidden')
-}
-
-if (tutorialSkip) {
-  tutorialSkip.addEventListener('click', () => {
-    screenEngine.skipTutorial()
-    updateTutorial()
-  })
-}
-
 let cursorOn = true
 let mouseDown = false
 let wheelTarget = 0
@@ -870,7 +833,93 @@ function drawScreen(): void {
   ctx.fill()
 
   screenTexture.needsUpdate = true
-  updateTutorial()
+}
+
+function updateDisplay(): void {
+  drawScreen()
+  updateTutorialOverlay()
+}
+
+function updateTutorialOverlay(): void {
+  const tutorialOverlay = document.getElementById('tutorial-overlay')
+  if (!tutorialOverlay) return
+  
+  const view = screenEngine.getViewModel()
+  
+  if (view.tutorialStep === null) {
+    tutorialOverlay.style.display = 'none'
+    return
+  }
+  
+  tutorialOverlay.style.display = 'flex'
+  
+  let content = ''
+  
+  if (view.tutorialStep === 0) {
+    // Step 0: Login
+    content = `
+      <div class="tutorial-box">
+        <div class="tutorial-text">
+          Click the <strong>ENTER</strong> key on the keyboard below to<br/>
+          login as Admin
+        </div>
+        <button class="tutorial-skip" id="skip-btn">SKIP TUTORIAL</button>
+      </div>
+    `
+  } else if (view.tutorialStep === 1) {
+    // Step 1: Help command
+    content = `
+      <div class="tutorial-box">
+        <div class="tutorial-text">
+          Great! Now use the keyboard to type commands like<br/>
+          <strong>help</strong>, <strong>tree</strong>, or <strong>aria</strong> and press Enter
+        </div>
+        <button class="tutorial-skip" id="skip-btn">SKIP TUTORIAL</button>
+      </div>
+    `
+  } else if (view.tutorialStep === 2) {
+    // Step 2: Clear command
+    content = `
+      <div class="tutorial-box">
+        <div class="tutorial-text">
+          Nice work! If the screen gets too full, you can type<br/>
+          <strong>clear</strong> to reset the terminal
+        </div>
+        <button class="tutorial-skip" id="skip-btn">SKIP TUTORIAL</button>
+      </div>
+    `
+  } else if (view.tutorialStep === 3) {
+    // Step 3: Goodbye
+    content = `
+      <div class="tutorial-box goodbye">
+        <div class="tutorial-text">
+          You're all set! Explore the file system to uncover<br/>
+          what happened to the crew 847 days ago.
+          <div class="tutorial-continue">Click anywhere to begin...</div>
+        </div>
+      </div>
+    `
+  }
+  
+  tutorialOverlay.innerHTML = content
+  
+  // Add click handler for skip button
+  const skipBtn = document.getElementById('skip-btn')
+  if (skipBtn) {
+    skipBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      screenEngine.skipTutorial()
+      updateTutorialOverlay()
+    })
+  }
+  
+  // Add click handler for goodbye message
+  if (view.tutorialStep === 3) {
+    tutorialOverlay.addEventListener('click', () => {
+      screenEngine.skipTutorial()
+      updateTutorialOverlay()
+    }, { once: true })
+  }
 }
 
 // Music volume slider
@@ -921,7 +970,7 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault()
     playKeySound()
     screenEngine.moveCursorLeft()
-    drawScreen()
+    updateDisplay()
     return
   }
 
@@ -929,7 +978,7 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault()
     playKeySound()
     screenEngine.moveCursorRight()
-    drawScreen()
+    updateDisplay()
     return
   }
 
@@ -942,7 +991,7 @@ window.addEventListener('keydown', (event) => {
     } else {
       screenEngine.historyPrev()
     }
-    drawScreen()
+    updateDisplay()
     return
   }
 
@@ -955,7 +1004,7 @@ window.addEventListener('keydown', (event) => {
     } else {
       screenEngine.historyNext()
     }
-    drawScreen()
+    updateDisplay()
     return
   }
 
@@ -963,7 +1012,7 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault()
     playKeySound()
     screenEngine.scrollPageUp()
-    drawScreen()
+    updateDisplay()
     return
   }
 
@@ -971,7 +1020,7 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault()
     playKeySound()
     screenEngine.scrollPageDown()
-    drawScreen()
+    updateDisplay()
     return
   }
 
@@ -979,7 +1028,7 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault()
     playKeySound()
     screenEngine.moveCursorHome()
-    drawScreen()
+    updateDisplay()
     return
   }
 
@@ -987,21 +1036,21 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault()
     playKeySound()
     screenEngine.moveCursorEnd()
-    drawScreen()
+    updateDisplay()
     return
   }
 
   if (event.key === 'Backspace') {
     playKeySound()
     screenEngine.backspace()
-    drawScreen()
+    updateDisplay()
     return
   }
 
   if (event.key === 'Delete') {
     playKeySound()
     screenEngine.delete()
-    drawScreen()
+    updateDisplay()
     return
   }
 
@@ -1014,14 +1063,14 @@ window.addEventListener('keydown', (event) => {
     } else {
       screenEngine.submit()
     }
-    drawScreen()
+    updateDisplay()
     return
   }
 
   if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
     playKeySound()
     screenEngine.insertCharacter(event.key)
-    drawScreen()
+    updateDisplay()
   }
 })
 
@@ -1042,7 +1091,7 @@ window.addEventListener('wheel', (event) => {
     // Scroll down (show newer content)
     screenEngine.scrollDown()
   }
-  drawScreen()
+  updateDisplay()
 }, { passive: false })
 
 window.addEventListener('pointermove', (event) => {
@@ -1131,7 +1180,7 @@ window.addEventListener('pointerdown', (event) => {
           }
         }
         
-        drawScreen()
+        updateDisplay()
         break
       }
     }
@@ -1162,10 +1211,10 @@ window.addEventListener('resize', () => {
 
 setInterval(() => {
   cursorOn = !cursorOn
-  drawScreen()
+  updateDisplay()
 }, 460)
 
-drawScreen()
+updateDisplay()
 
 function tick(): void {
   const elapsed = clock.getElapsedTime()
